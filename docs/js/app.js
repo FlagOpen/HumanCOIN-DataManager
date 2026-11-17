@@ -83,7 +83,7 @@ async function showPreview(entry){
 }
 function accessReminder(){return '<p class="notice">Before downloading, visit the <a href="https://huggingface.co/HumanCOIN" target="_blank" rel="noopener noreferrer">HumanCOIN Hugging Face page ↗</a>, open the datasets you need and request download access where required. For gated datasets, wait for approval and authenticate with the approved account before downloading.</p>';}
 function showWelcome(){
- openModal('Welcome to HumanCOIN', `<div class="release-notice" role="note"><p>The first batch is expected to include approximately 1,200 hours of data. For access to subsequent data, please email <a href="mailto:humancoin@163.com">humancoin@163.com</a> to apply.</p></div><p class="modaldesc">Please make sure you can access <a href="https://huggingface.co/HumanCOIN" target="_blank" rel="noopener noreferrer">Hugging Face ↗</a>. Full video previews currently load from Hugging Face.</p><div class="downloadbar"><span></span><button class="btn primary" id="dismissWelcome">Continue to portal</button></div>`);
+ openModal('Welcome to HumanCOIN', `<div class="release-notice" role="note"><p>The first batch is expected to include approximately 1,200 hours of data. For access to subsequent data, please email <a href="mailto:humancoin@163.com">humancoin@163.com</a> to apply.</p></div><p class="modaldesc">Please make sure you can access <a href="https://huggingface.co/HumanCOIN" target="_blank" rel="noopener noreferrer">Hugging Face ↗</a>. Full video previews currently load from Hugging Face.</p>${accessReminder()}<div class="downloadbar"><span></span><button class="btn primary" id="dismissWelcome">Continue to portal</button></div>`);
  el('dismissWelcome').onclick=closeModal;
 }
 function downloadBody(items, title) {
