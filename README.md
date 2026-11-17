@@ -74,10 +74,10 @@ A new snapshot displays **New catalog available · Refresh**. It does not replac
 
 ## Download tool
 
-Install the CLI from [PyPI](https://pypi.org/project/humancoin-lerobot/) with Python 3.10–3.13. Source and documentation: [HumanCOIN-LeRobot](https://github.com/RoboCoin-BAAI/HumanCOIN-LeRobot).
+Install the CLI from [PyPI](https://pypi.org/project/humancoin/) with Python 3.10–3.13. Source and documentation: [HumanCOIN](https://github.com/RoboCoin-BAAI/HumanCOIN).
 
 ```bash
-pip install -U "humancoin-lerobot>=0.1.1"
+pip install -U "humancoin>=0.1.1"
 ```
 
 Select repositories and a source, then copy generated commands. Each repository has its own `--revision`; add `--dry-run` to inspect destinations. Use the platform’s approved authentication mechanism for restricted datasets. `selection.json` is for restoring website selections, not a `--manifest` CLI input.

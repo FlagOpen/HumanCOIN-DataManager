@@ -38,7 +38,7 @@ npm run check
 
 预期地址：https://robocoin-baai.github.io/HumanCOIN-DataManager/
 
-下载命令使用 HumanCOIN-LeRobot 工具，门户自身不代理下载。申请权限由数据平台的仓库设置控制，网页提示不会启用权限限制。
+下载命令使用 HumanCOIN 工具，门户自身不代理下载。申请权限由数据平台的仓库设置控制，网页提示不会启用权限限制。
 
 完整架构、同步参数及限制见 [README.md](README.md)。
 
@@ -47,7 +47,7 @@ npm run check
 使用 Python 3.10–3.13，可直接安装 PyPI 包，无需克隆源码：
 
 ```bash
-pip install -U "humancoin-lerobot>=0.1.1"
+pip install -U "humancoin>=0.1.1"
 ```
 
 该安装同时支持 Hugging Face 和 ModelScope；随后执行生成的 `humancoin-download` 命令。
