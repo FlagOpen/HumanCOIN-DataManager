@@ -1,5 +1,8 @@
 // Translate portal UI only. Dataset content, metadata, IDs and commands stay verbatim.
 const translations = {
+ 'First data release · November 24–30, 2026':'首批数据开放 · 2026 年 11 月 24–30 日',
+ 'The first batch is expected to include approximately 1,200 hours of data. For access to subsequent data, please email':'首批预计开放约 1,200 小时数据。后续数据欢迎通过邮件联系申请使用：',
+ 'to apply.':'。',
  'HumanCOIN DataManager — Multimodal Human Data Portal':'HumanCOIN DataManager — 多模态人体数据门户',
  'DATA PORTAL':'数据门户','WORKSPACE':'工作区','Overview':'概览','Explore Datasets':'浏览数据集','Explore datasets':'浏览数据集','My Selection':'我的选择','▤   My Selection':'▤ 我的选择','SDK & Documentation':'SDK 与文档','RESOURCES':'资源','About HumanCOIN':'关于 HumanCOIN','Project introduction ↗':'项目介绍 ↗','Public Data Portal':'公开数据门户',
  'EGOCENTRIC MANIPULATION · HUMAN SIGNALS':'第一视角操作 · 人体信号','Human activity,':'人类活动，','and the signals behind it.':'及其背后的信号。',
