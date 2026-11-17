@@ -28,6 +28,17 @@ class CatalogTest(unittest.TestCase):
         self.assertEqual(scene_fields('legacy_scene'), ('legacy_scene',''))
         self.assertEqual(scene_fields({'category':'unknown'}), ('unknown','unknown'))
 
+    def test_metadata_token_scope(self):
+        from urllib.request import HTTPRedirectHandler
+        with patch.dict('os.environ', {'HF_TOKEN':'', 'HF_ACCESS_TOKEN':'test-secret'}):
+            request = sync.metadata_request('https://huggingface.co/datasets/HumanCOIN/demo/resolve/main/meta/info.json')
+            self.assertEqual(request.get_header('Authorization'), 'Bearer test-secret')
+            self.assertNotIn('Authorization', request.headers)
+            for url in ['https://www.modelscope.cn/api', 'http://huggingface.co/file', 'https://huggingface.co.evil.test/file']:
+                self.assertIsNone(sync.metadata_request(url).get_header('Authorization'))
+            redirected = HTTPRedirectHandler().redirect_request(request, None, 302, 'redirect', {}, 'https://cdn.example/file')
+            self.assertIsNone(redirected.get_header('Authorization'))
+
     def setUp(self):
         self.previews = patch('scripts.preview_assets.attach_previews')
         self.previews.start()

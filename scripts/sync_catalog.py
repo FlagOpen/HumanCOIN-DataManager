@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 import hashlib
 import json
+import os
 from pathlib import Path
 import random
 import re
@@ -13,7 +14,7 @@ import sys
 import threading
 import time
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urlparse
 from urllib.request import Request, urlopen
 
 try:
@@ -39,6 +40,14 @@ def retry_delay(value, attempt):
         except (ValueError, TypeError, AttributeError):
             return min(30, 2 ** attempt) + random.random()
 
+def metadata_request(url):
+    request = Request(url, headers={'User-Agent': 'HumanCOIN-DataManager/3.0'})
+    token = os.environ.get('HF_TOKEN') or os.environ.get('HF_ACCESS_TOKEN')
+    if token and urlparse(url).scheme == 'https' and urlparse(url).hostname == 'huggingface.co':
+        # Do not forward the credential to redirect destinations (e.g. third-party CDNs).
+        request.add_unredirected_header('Authorization', 'Bearer ' + token)
+    return request
+
 def fetch(url):
     global _THROTTLE_UNTIL, _NETWORK_LIMIT, _NETWORK_ACTIVE
     for attempt in range(4):
@@ -50,7 +59,7 @@ def fetch(url):
                 _NETWORK_CONDITION.wait_for(lambda: _NETWORK_ACTIVE < _NETWORK_LIMIT)
                 _NETWORK_ACTIVE += 1
             try:
-                with urlopen(Request(url, headers={'User-Agent': 'HumanCOIN-DataManager/3.0'}), timeout=30) as response:
+                with urlopen(metadata_request(url), timeout=30) as response:
                     return json.load(response), response.headers.get('Link', '')
             finally:
                 with _NETWORK_CONDITION:

@@ -1,0 +1,41 @@
+name: Sync Hugging Face access
+on:
+  workflow_dispatch:
+    inputs:
+      sources:
+        description: 'Entry dataset IDs, separated by spaces (HumanCOIN/name)'
+        required: true
+        type: string
+      apply:
+        description: 'Grant access (false previews only)'
+        default: false
+        type: boolean
+permissions:
+  contents: read
+concurrency:
+  group: hf-access-sync
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: pip install 'huggingface_hub>=0.34,<2'
+      - name: Preview or apply grants
+        env:
+          HF_ACCESS_TOKEN: ${{ secrets.HF_ACCESS_TOKEN }}
+          ACCESS_SOURCES: ${{ inputs.sources }}
+          ACCESS_APPLY: ${{ inputs.apply }}
+        run: |
+          python - <<'PY'
+          import os
+          from scripts.sync_hf_access import main
+          import sys
+          sys.argv = ['sync_hf_access', '--source', *os.environ['ACCESS_SOURCES'].split()]
+          if os.environ['ACCESS_APPLY'] == 'true':
+              sys.argv.append('--apply')
+          raise SystemExit(main())
+          PY
