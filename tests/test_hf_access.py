@@ -53,6 +53,25 @@ class AccessTest(unittest.TestCase):
             synchronize(api, ['HumanCOIN/entry'], apply=True)
         self.assertEqual(api.grants, [])
 
+    def test_all_sources_union_and_new_targets(self):
+        api = FakeApi()
+        api.accepted['HumanCOIN/new'].add('charlie')
+        api.accepted['HumanCOIN/added'] = set()
+        api.rejected['HumanCOIN/added'] = set()
+        result = synchronize(api, apply=True)
+        self.assertEqual(result['users'], 3)
+        self.assertEqual(result['targets'], 3)
+        self.assertIn(('HumanCOIN/entry', 'charlie'), api.grants)
+        self.assertEqual(api.accepted['HumanCOIN/added'], {'alice','bob','charlie'})
+        self.assertNotIn(('HumanCOIN/new', 'bob'), api.grants)
+        self.assertEqual(synchronize(api, apply=True)['planned'], 0)
+
+    def test_empty_discovery_is_noop(self):
+        api = FakeApi()
+        api.list_datasets = lambda **kwargs: []
+        self.assertEqual(synchronize(api, apply=True)['granted'], 0)
+        self.assertEqual(api.grants, [])
+
     def test_scope_validation(self):
         for source in ['Other/entry', 'HumanCOIN/manual', 'HumanCOIN/private']:
             api = FakeApi()

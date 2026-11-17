@@ -9,23 +9,28 @@ def usernames(requests):
     return {request.username for request in requests}
 
 
-def synchronize(api, sources, *, apply=False):
-    sources = sorted(set(sources))
-    if not sources or any(not repo.startswith('HumanCOIN/') or repo.count('/') != 1 for repo in sources):
+def synchronize(api, sources=None, *, apply=False):
+    discover_sources = sources is None
+    sources = sorted(set(sources or []))
+    if (not discover_sources and not sources) or any(not repo.startswith('HumanCOIN/') or repo.count('/') != 1 for repo in sources):
         raise ValueError('Specify entry datasets as HumanCOIN/name.')
     # Fully read the inventory and source access lists before performing mutations.
     inventory = {dataset.id: dataset for dataset in api.list_datasets(author='HumanCOIN')}
+    targets = sorted(repo for repo, info in inventory.items()
+                     if repo.startswith('HumanCOIN/') and info.gated == 'auto' and not info.private)
+    if discover_sources:
+        sources = targets
     for repo in sources:
         if repo not in inventory or inventory[repo].gated != 'auto' or inventory[repo].private:
             raise ValueError('Entry datasets must be public HumanCOIN datasets with automatic gating.')
     accepted = set()
+    source_users = {}
     for repo in sources:
-        accepted.update(usernames(api.list_accepted_access_requests(repo, repo_type='dataset')))
-    targets = sorted(repo for repo, info in inventory.items()
-                     if repo.startswith('HumanCOIN/') and info.gated == 'auto' and not info.private)
+        source_users[repo] = usernames(api.list_accepted_access_requests(repo, repo_type='dataset'))
+        accepted.update(source_users[repo])
     plan = []
     for repo in targets:
-        existing = usernames(api.list_accepted_access_requests(repo, repo_type='dataset'))
+        existing = source_users[repo] if repo in source_users else usernames(api.list_accepted_access_requests(repo, repo_type='dataset'))
         rejected = usernames(api.list_rejected_access_requests(repo, repo_type='dataset'))
         candidates = accepted - existing - rejected
         plan.append((repo, sorted(candidates), len(accepted & rejected)))
@@ -57,7 +62,9 @@ def synchronize(api, sources, *, apply=False):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--source', nargs='+', required=True, help='Entry dataset IDs, space-separated')
+    scope = parser.add_mutually_exclusive_group(required=True)
+    scope.add_argument('--source', nargs='+', help='Entry dataset IDs, space-separated')
+    scope.add_argument('--all-sources', action='store_true', help='Use all public auto-gated HumanCOIN datasets as entries')
     parser.add_argument('--apply', action='store_true', help='Grant missing access; otherwise preview only')
     args = parser.parse_args()
     token = os.environ.get('HF_ACCESS_TOKEN')
@@ -65,7 +72,7 @@ def main():
         parser.error('Set HF_ACCESS_TOKEN to an account token with write access to the gated datasets.')
     try:
         from huggingface_hub import HfApi
-        result = synchronize(HfApi(token=token), args.source, apply=args.apply)
+        result = synchronize(HfApi(token=token), None if args.all_sources else args.source, apply=args.apply)
     except Exception as error:
         print(f'Access sync stopped ({type(error).__name__}). Check source IDs and token permissions.', file=sys.stderr)
         return 1

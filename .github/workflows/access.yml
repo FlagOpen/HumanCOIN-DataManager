@@ -1,10 +1,12 @@
 name: Sync Hugging Face access
 on:
+  schedule:
+    - cron: '2-59/5 * * * *'
   workflow_dispatch:
     inputs:
       sources:
-        description: 'Entry dataset IDs, separated by spaces (HumanCOIN/name)'
-        required: true
+        description: 'Optional entry dataset IDs; leave empty to use all public auto-gated HumanCOIN datasets'
+        required: false
         type: string
       apply:
         description: 'Grant access (false previews only)'
@@ -18,6 +20,7 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -29,13 +32,16 @@ jobs:
           HF_ACCESS_TOKEN: ${{ secrets.HF_ACCESS_TOKEN }}
           ACCESS_SOURCES: ${{ inputs.sources }}
           ACCESS_APPLY: ${{ inputs.apply }}
+          ACCESS_EVENT: ${{ github.event_name }}
         run: |
           python - <<'PY'
           import os
           from scripts.sync_hf_access import main
           import sys
-          sys.argv = ['sync_hf_access', '--source', *os.environ['ACCESS_SOURCES'].split()]
-          if os.environ['ACCESS_APPLY'] == 'true':
+          sources = os.environ.get('ACCESS_SOURCES', '').split()
+          sys.argv = ['sync_hf_access']
+          sys.argv += ['--source', *sources] if sources else ['--all-sources']
+          if os.environ['ACCESS_EVENT'] == 'schedule' or os.environ['ACCESS_APPLY'] == 'true':
               sys.argv.append('--apply')
           raise SystemExit(main())
           PY
