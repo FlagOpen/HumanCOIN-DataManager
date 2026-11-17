@@ -74,7 +74,7 @@ A new snapshot displays **New catalog available · Refresh**. It does not replac
 
 ## Download tool
 
-Install the CLI from [PyPI](https://pypi.org/project/humancoin/) with Python 3.10–3.13. Source and documentation: [HumanCOIN](https://github.com/RoboCoin-BAAI/HumanCOIN).
+Install the CLI from [PyPI](https://pypi.org/project/humancoin/) with Python 3.10–3.13. Source and documentation: [HumanCOIN](https://github.com/FlagOpen/HumanCOIN).
 
 ```bash
 pip install -U "humancoin>=0.1.1"

@@ -27,7 +27,7 @@ Install once with Python **3.10–3.13**:
 pip install -U "humancoin>=0.1.1"
 ```
 
-This installation supports both platforms; no source checkout is required. See the [HumanCOIN repository](https://github.com/RoboCoin-BAAI/HumanCOIN) for tool documentation. For restricted datasets, sign in locally with an approved account or configure `HF_TOKEN` / `MODELSCOPE_TOKEN` in your local environment. Do not commit tokens or enter them into the portal.
+This installation supports both platforms; no source checkout is required. See the [HumanCOIN repository](https://github.com/FlagOpen/HumanCOIN) for tool documentation. For restricted datasets, sign in locally with an approved account or configure `HF_TOKEN` / `MODELSCOPE_TOKEN` in your local environment. Do not commit tokens or enter them into the portal.
 
 ## Download a batch
 
@@ -60,7 +60,7 @@ The catalog refreshes daily at **08:00 and 09:00 Asia/Shanghai** and can also be
 - Download issues: check tool installation, connectivity, access approval and token permissions.
 - Preview issues: check Hugging Face connectivity and permissions, or open the dataset on its source platform.
 - Portal bugs: [open an issue](https://github.com/FlagOpen/HumanCOIN-DataManager/issues).
-- Tool and dataset-reading questions: [HumanCOIN repository](https://github.com/RoboCoin-BAAI/HumanCOIN).
+- Tool and dataset-reading questions: [HumanCOIN repository](https://github.com/FlagOpen/HumanCOIN).
 - Data requests and contact: [humancoin@163.com](mailto:humancoin@163.com).
 
 ## Local development

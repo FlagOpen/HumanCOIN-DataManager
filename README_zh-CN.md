@@ -27,7 +27,7 @@ HumanCOIN 每 5 分钟运行一次跨数据集权限同步：在任意公开 `au
 pip install -U "humancoin>=0.1.1"
 ```
 
-同一安装支持两个平台。无需克隆工具源码，工具仓库见 [HumanCOIN](https://github.com/RoboCoin-BAAI/HumanCOIN)。受限数据集需要先登录获批账号，或在本地环境中配置 `HF_TOKEN` / `MODELSCOPE_TOKEN`；不要将 Token 上传到仓库或填写进门户。
+同一安装支持两个平台。无需克隆工具源码，工具仓库见 [HumanCOIN](https://github.com/FlagOpen/HumanCOIN)。受限数据集需要先登录获批账号，或在本地环境中配置 `HF_TOKEN` / `MODELSCOPE_TOKEN`；不要将 Token 上传到仓库或填写进门户。
 
 ## 批量下载
 
@@ -60,7 +60,7 @@ JSON 是选择清单，不包含数据本身，也不会上传本地数据。浏
 - 下载失败：确认工具已安装、目标平台网络可达、账号已获授权，Token 权限有效。
 - 预览失败：检查 Hugging Face 连接与访问权限，也可前往数据来源平台查看。
 - 网页问题：[提交 Issue](https://github.com/FlagOpen/HumanCOIN-DataManager/issues)。
-- 工具与数据读取问题：[HumanCOIN 仓库](https://github.com/RoboCoin-BAAI/HumanCOIN)。
+- 工具与数据读取问题：[HumanCOIN 仓库](https://github.com/FlagOpen/HumanCOIN)。
 - 数据申请与其他联系：[humancoin@163.com](mailto:humancoin@163.com)。
 
 ## 本地运行与开发
