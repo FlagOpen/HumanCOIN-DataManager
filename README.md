@@ -1,6 +1,6 @@
 # HumanCOIN DataManager
 
-[简体中文](README_zh-CN.md) · [Live portal](https://robocoin-baai.github.io/HumanCOIN-DataManager/) · [Project introduction](https://koorye.github.io/HumanCOIN-dev/)
+[简体中文](README_zh-CN.md) · [Live portal](https://flagopen.github.io/HumanCOIN-DataManager/) · [Project introduction](https://koorye.github.io/HumanCOIN-dev/)
 
 HumanCOIN DataManager is a web portal for finding, previewing and downloading HumanCOIN datasets. Filter datasets, save your selection and copy ready-to-run download commands without assembling repository names by hand.
 
@@ -31,7 +31,7 @@ This installation supports both platforms; no source checkout is required. See t
 
 ## Download a batch
 
-1. **Open the portal:** visit [HumanCOIN-DATA](https://robocoin-baai.github.io/HumanCOIN-DataManager/). Switch English/Chinese in the top bar; dataset names and metadata remain in English.
+1. **Open the portal:** visit [HumanCOIN-DATA](https://flagopen.github.io/HumanCOIN-DataManager/). Switch English/Chinese in the top bar; dataset names and metadata remain in English.
 2. **Find datasets:** filter by tier, modality, scene category and area, task or main camera resolution. Search by name or repository ID.
 3. **Select datasets:** check **Select Dataset** on the cards. **Select page** selects the current page; **Select all matches** selects every matching page.
 4. **Choose a platform:** select Hugging Face or ModelScope in **My Selection**. All selected datasets must be available on that platform.
@@ -59,7 +59,7 @@ The catalog refreshes daily at **08:00 and 09:00 Asia/Shanghai** and can also be
 
 - Download issues: check tool installation, connectivity, access approval and token permissions.
 - Preview issues: check Hugging Face connectivity and permissions, or open the dataset on its source platform.
-- Portal bugs: [open an issue](https://github.com/RoboCoin-BAAI/HumanCOIN-DataManager/issues).
+- Portal bugs: [open an issue](https://github.com/FlagOpen/HumanCOIN-DataManager/issues).
 - Tool and dataset-reading questions: [HumanCOIN repository](https://github.com/RoboCoin-BAAI/HumanCOIN).
 - Data requests and contact: [humancoin@163.com](mailto:humancoin@163.com).
 

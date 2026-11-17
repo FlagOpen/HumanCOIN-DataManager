@@ -1,6 +1,6 @@
 # HumanCOIN DataManager
 
-[English](README.md) · [在线门户](https://robocoin-baai.github.io/HumanCOIN-DataManager/?lang=zh) · [HumanCOIN 项目介绍](https://koorye.github.io/HumanCOIN-dev/)
+[English](README.md) · [在线门户](https://flagopen.github.io/HumanCOIN-DataManager/?lang=zh) · [HumanCOIN 项目介绍](https://koorye.github.io/HumanCOIN-dev/)
 
 HumanCOIN DataManager 是查找、预览和下载 HumanCOIN 数据集的网页工具。你可以筛选数据、保存选择，并直接复制下载命令，无需手动拼接数据集名称。
 
@@ -31,7 +31,7 @@ pip install -U "humancoin>=0.1.1"
 
 ## 批量下载
 
-1. **打开门户**：访问 [HumanCOIN-DATA](https://robocoin-baai.github.io/HumanCOIN-DataManager/?lang=zh)。右上角可切换中英文，数据集名称和元数据保持英文。
+1. **打开门户**：访问 [HumanCOIN-DATA](https://flagopen.github.io/HumanCOIN-DataManager/?lang=zh)。右上角可切换中英文，数据集名称和元数据保持英文。
 2. **筛选数据**：按 L1/L2/L3、模态、场景类别与区域、任务、主相机分辨率筛选，也可搜索名称或 ID。
 3. **选择数据集**：勾选卡片上的“选择数据集”。“选择本页”只选当前页，“选择全部匹配项”覆盖筛选后的所有页面。
 4. **选择下载平台**：在“我的选择”区域选择 Hugging Face 或 ModelScope。所选数据集须在对应平台可用。
@@ -59,7 +59,7 @@ JSON 是选择清单，不包含数据本身，也不会上传本地数据。浏
 
 - 下载失败：确认工具已安装、目标平台网络可达、账号已获授权，Token 权限有效。
 - 预览失败：检查 Hugging Face 连接与访问权限，也可前往数据来源平台查看。
-- 网页问题：[提交 Issue](https://github.com/RoboCoin-BAAI/HumanCOIN-DataManager/issues)。
+- 网页问题：[提交 Issue](https://github.com/FlagOpen/HumanCOIN-DataManager/issues)。
 - 工具与数据读取问题：[HumanCOIN 仓库](https://github.com/RoboCoin-BAAI/HumanCOIN)。
 - 数据申请与其他联系：[humancoin@163.com](mailto:humancoin@163.com)。
 

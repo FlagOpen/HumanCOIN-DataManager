@@ -25,7 +25,7 @@ Browser review: dismiss the welcome notice; switch English/Chinese; check scene 
 
 1. Set Settings → Pages → Source to GitHub Actions.
 2. Confirm Actions is enabled and the deployment workflow succeeds.
-3. Visit https://robocoin-baai.github.io/HumanCOIN-DataManager/ and test a fresh session.
+3. Visit https://flagopen.github.io/HumanCOIN-DataManager/ and test a fresh session.
 4. Confirm the scheduled catalog workflow can commit to main under repository branch rules.
 
 ## Current access behavior
