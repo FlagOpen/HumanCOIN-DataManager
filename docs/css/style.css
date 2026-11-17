@@ -188,4 +188,3 @@ body{
 /* Informational messages must not block buttons beneath them. */
 #toast{pointer-events:none}
 
-.release-notice{margin:20px 0;padding:16px 18px;border:1px solid var(--cyan);border-radius:12px;background:rgba(66,211,189,.06);line-height:1.7}.release-notice strong{color:var(--cyan)}.release-notice p{margin:6px 0 0;font-size:14px}
