@@ -188,3 +188,15 @@ body{
 /* Informational messages must not block buttons beneath them. */
 #toast{pointer-events:none}
 
+/* Welcome announcement: typography and spacing, without inset cards. */
+.modal:has(.welcome-content){width:min(600px,100%)}
+.welcome-content{padding:2px 4px 4px;line-height:1.8}
+.welcome-content h3{margin:0 0 8px;font-size:13px;font-weight:600;color:#304864;letter-spacing:.02em}
+.welcome-lead{margin:0 0 8px;font-size:18px;color:#243b55;line-height:1.7}
+.welcome-lead strong{font-size:22px;font-weight:650;color:#245fbd;white-space:nowrap}
+.welcome-copy{margin:0;font-size:14px;color:#65758a}
+.welcome-content a{color:#245fbd;text-decoration:none;text-underline-offset:3px;overflow-wrap:anywhere}
+.welcome-content a:hover{text-decoration:underline}
+.welcome-section{margin-top:24px}
+.welcome-actions{display:flex;justify-content:flex-end;margin-top:30px}
+@media(max-width:640px){.welcome-content{padding:0}.welcome-lead{font-size:16px}.welcome-lead strong{font-size:20px}.welcome-section{margin-top:20px}.welcome-actions .btn{width:100%}}

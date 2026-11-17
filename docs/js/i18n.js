@@ -1,5 +1,15 @@
 // Translate portal UI only. Dataset content, metadata, IDs and commands stay verbatim.
 const translations = {
+ 'Data availability':'数据开放',
+ 'The first batch is expected to include approximately':'首批预计开放约',
+ '1,200 hours':'1,200 小时',
+ 'of data.':'数据。',
+ 'For access to subsequent data, please email':'后续数据欢迎通过邮件联系申请使用：',
+ 'Video previews':'视频预览',
+ 'Before downloading':'下载须知',
+ 'Visit the':'请访问',
+ 'and open the datasets you need. If access is restricted, submit a request, wait for approval and authenticate with the approved account before downloading.':'，打开所需数据集。如有权限要求，请先申请，待批准后使用获批账号认证下载。',
+
  'First data release · November 24–30, 2026':'首批数据开放 · 2026 年 11 月 24–30 日',
  'The first batch is expected to include approximately 1,200 hours of data. For access to subsequent data, please email':'首批预计开放约 1,200 小时数据。后续数据欢迎通过邮件联系申请使用：',
  'to apply.':'。',
