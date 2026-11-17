@@ -34,7 +34,7 @@ npm run check
 
 ## GitHub Pages
 
-在仓库 Settings → Pages 中选择 **GitHub Actions**。推送到 main 后，Pages 工作流检查并发布 `docs/`。目录同步工作流每日 01:00 UTC（北京时间 09:00）执行，也可在 Actions 中手动触发。
+在仓库 Settings → Pages 中选择 **GitHub Actions**。推送到 main 后，Pages 工作流检查并发布 `docs/`。目录同步工作流每日 00:00、01:00 UTC（北京时间 08:00、09:00）各执行一次，也可在 Actions 中手动触发。
 
 预期地址：https://robocoin-baai.github.io/HumanCOIN-DataManager/
 

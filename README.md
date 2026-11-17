@@ -107,7 +107,7 @@ These check actual module workers, 20-row pages, cross-page selections, URL hist
 Push this project to your repository and select **GitHub Actions** under Settings → Pages → Source. `main` is the configured publication branch.
 
 - `pages.yml` tests, validates and deploys the complete `docs/` directory.
-- `catalog.yml` refreshes daily at 09:00 Asia/Shanghai or manually, tests/validates, commits the complete `docs/data/` and `sync-state/`, and deploys those artifacts with their matching source commit. Actions needs repository write access; protected branches may need a repository-specific PR workflow.
+- `catalog.yml` refreshes daily at 08:00 and 09:00 Asia/Shanghai or manually, tests/validates, commits the complete `docs/data/` and `sync-state/`, and deploys those artifacts with their matching source commit. Actions needs repository write access; protected branches may need a repository-specific PR workflow.
 
 No remote push or live deployment is performed during local development. The supplied HTML, PNG samples and RoboCOIN reference checkout remain local reference materials and are excluded from the new repository by `.gitignore`.
 
