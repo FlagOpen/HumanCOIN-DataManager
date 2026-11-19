@@ -53,10 +53,21 @@ Each aggregate records known, missing, stale and derived counts. Missing is not 
 
 ```bash
 npm run sync
+python3 -m pip install 'PyYAML>=6,<7'
 python3 scripts/sync_catalog.py --validate
 # Re-read unchanged metadata when diagnosing a source change:
 python3 scripts/sync_catalog.py --force
 ```
+
+The catalog reads `portal.yaml` at the root of each dataset repository on Hugging Face or ModelScope. Set `schema_version: 1` and use these fields:
+
+- `repo_id`, `level`, `license`, `scene` (`area` or `name`, plus `category`), and `task_name`
+- `example_task_description` for the card summary
+- `num_recordings`, `duration_s` in seconds, and `size_bytes` for repository-level totals
+- `resolution` as `WIDTHxHEIGHT`, `modalities` as a list, and `primary_camera` as the stream identifier
+- `preview_video` as a repository-relative MP4 path, when available
+
+Repositories awaiting a valid YAML file appear with basic listing information and a metadata warning. A previously cached YAML record can still be used during a fetch failure.
 
 The standard-library sync script paginates both public platform inventories. HF content commits and ModelScope modification fingerprints avoid re-reading unchanged metadata. Branch-based metadata is checked at least daily; HF commit-based metadata is reused until its commit changes. Download counts and availability update independently of content revisions. Both platforms have metadata adapters; fresh HF metadata takes priority, then fresh MS, then available stale metadata.
 

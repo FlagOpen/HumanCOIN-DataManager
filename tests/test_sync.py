@@ -11,11 +11,14 @@ from scripts.catalog_store import aggregate, publish, validate, read_records, en
 
 NOW = datetime(2026,11,13,tzinfo=timezone.utc)
 HF_ROW={'id':'HumanCOIN/l3_demo','author':'HumanCOIN','sha':'a'*40,'downloads':4,'tags':['L3'],'lastModified':'2026-11-12T00:00:00Z'}
-INFO={'total_episodes':1,'total_frames':300,'fps':30,'features':{'observation.eeg':{'dtype':'float32','shape':[32],'fps':250},'observation.images.rgb':{'dtype':'video'}},'video_path':'videos/{video_key}/episode_{episode_index:06d}.mp4'}
-README={'scene':{'name':'kitchen'},'task_name':'cook','size_bytes':1024}
+PORTAL = {'schema_version': 1, 'scene': {'name': 'kitchen'}, 'task_name': 'cook',
+          'example_task_description': 'Example recording', 'num_recordings': 2,
+          'duration_s': 10, 'size_bytes': 1024, 'modalities': ['RGB', 'EEG'],
+          'resolution': '1920x1184', 'primary_camera': 'observation.images.head',
+          'preview_video': 'first recording/videos/head.mp4'}
 
 def record(index=0, level='L3'):
-    result=sync.normalize(f'HumanCOIN/l3_demo_{index}',HF_ROW,{},INFO,README)
+    result=sync.normalize(f'HumanCOIN/l3_demo_{index}',HF_ROW,{},PORTAL)
     result['level']=level
     return result
 
@@ -31,7 +34,7 @@ class CatalogTest(unittest.TestCase):
     def test_metadata_token_scope(self):
         from urllib.request import HTTPRedirectHandler
         with patch.dict('os.environ', {'HF_TOKEN':'', 'HF_ACCESS_TOKEN':'test-secret'}):
-            request = sync.metadata_request('https://huggingface.co/datasets/HumanCOIN/demo/resolve/main/meta/info.json')
+            request = sync.metadata_request('https://huggingface.co/datasets/HumanCOIN/demo/raw/main/portal.yaml')
             self.assertEqual(request.get_header('Authorization'), 'Bearer test-secret')
             self.assertNotIn('Authorization', request.headers)
             for url in ['https://www.modelscope.cn/api', 'http://huggingface.co/file', 'https://huggingface.co.evil.test/file']:
@@ -44,30 +47,40 @@ class CatalogTest(unittest.TestCase):
         self.previews.start()
         self.addCleanup(self.previews.stop)
 
-    def test_missing_metadata_and_invalid_duration(self):
-        d=sync.normalize('HumanCOIN/l2_example',{}, {'Name':'l2_example'}, {'fps':'bad','total_frames':1},{})
-        self.assertEqual(d['level'],'L2');self.assertIsNone(d['episodes']);self.assertIsNone(d['durationSeconds']);self.assertEqual(d['mods'],[])
-        self.assertEqual(list(d['hubs']),['modelscope']);self.assertEqual(d['videos'],[])
-    def test_features_and_preferred_explicit_tier(self):
-        d=sync.normalize('HumanCOIN/l1_demo',HF_ROW,{},INFO,README)
-        self.assertEqual(d['durationSeconds'],10);self.assertEqual(d['derivedMetrics'],['durationSeconds']);self.assertEqual(d['level'],'L3')
-        self.assertEqual(d['mods'],['RGB','EEG']);self.assertEqual(len(d['videos']),1)
-    def test_main_camera_resolution_from_metadata_and_repository_name(self):
-        repo='HumanCOIN/l3_dining_area_assemble_sandwich_left_1920x1184_30fps_10views'
-        fallback=sync.normalize(repo,HF_ROW,{}, {}, {})
-        self.assertEqual(fallback['resolution'],'1920x1184');self.assertEqual(fallback['resolutionSource'],'repository-name')
-        features={'observation.images.wrist':{'dtype':'video','shape':[480,640,3]},
-                  'observation.images.head':{'dtype':'video','shape':[1184,1920,3]}}
-        info={'features':features,'master_feature':'observation.images.wrist'}
-        readme={'cameras':{'primary_camera':'observation.images.head'}}
-        declared=sync.normalize('HumanCOIN/l3_demo_left_1280x720_30fps',HF_ROW,{},info,readme)
-        self.assertEqual(declared['resolution'],'1920x1184');self.assertEqual(declared['primaryCamera'],'observation.images.head')
-        self.assertEqual(declared['resolutionSource'],'metadata');self.assertNotIn('devices',declared)
-        no_primary=sync.normalize('HumanCOIN/l3_demo',HF_ROW,{},info,{})
-        self.assertIsNone(no_primary['resolution'])  # Do not mistake master-timeline camera for primary.
-        cameras={'primary_camera':'head','items':[{'id':'head','width':1920,'height':1184}]}
-        item=sync.normalize('HumanCOIN/l3_demo',HF_ROW,{}, {}, {'cameras':cameras})
-        self.assertEqual(item['resolution'],'1920x1184')
+    def test_portal_fields_and_hub_preview_urls(self):
+        repo = 'HumanCOIN/l1_demo_1280x720_30fps'
+        metadata = sync.validate_portal(PORTAL, repo)
+        hf = sync.normalize(repo, HF_ROW, {}, metadata)
+        self.assertEqual(hf['level'], 'L3')
+        self.assertEqual(hf['episodes'], 2)
+        self.assertEqual(hf['durationSeconds'], 10)
+        self.assertEqual(hf['description'], 'Example recording')
+        self.assertEqual(hf['sceneCategory'], 'household')
+        self.assertEqual(hf['mods'], ['RGB', 'EEG'])
+        self.assertEqual(hf['resolution'], '1920x1184')
+        self.assertEqual(hf['resolutionSource'], 'metadata')
+        self.assertTrue(hf['videos'][0]['url'].endswith('/first%20recording/videos/head.mp4'))
+        ms = sync.normalize(repo, {}, {'Name': 'l1_demo'}, metadata)
+        self.assertEqual(ms['videos'][0]['url'], sync.ms_file(repo, PORTAL['preview_video']))
+        self.assertEqual(ms['metadataSources'], [sync.ms_file(repo, 'portal.yaml')])
+
+    def test_missing_portal_uses_listing_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            warnings = []
+            with patch.object(sync, 'fetch', side_effect=sync.HTTPError('url', 404, 'missing', {}, None)) as fetch:
+                row, status, _ = sync.source_record('HumanCOIN/l1_demo_1280x720', 'huggingface', HF_ROW, Path(tmp), NOW, warnings)
+            self.assertEqual(status, 'missing')
+            self.assertEqual(row['resolution'], '1280x720')
+            self.assertIsNone(row['episodes'])
+            self.assertEqual(row['videos'], [])
+            self.assertIn('portal.yaml', warnings[0])
+            fetch.assert_called_once_with(sync.portal_url(row['id'], 'huggingface', HF_ROW['sha']), load=sync.yaml.safe_load)
+
+    def test_portal_rejects_invalid_metrics_and_paths(self):
+        for invalid in ({'duration_s': '10'}, {'preview_video': '../sample.mp4'},
+                        {'preview_video': 'https://example.com/sample.mp4'}, {'schema_version': True}):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                sync.validate_portal({**PORTAL, **invalid}, HF_ROW['id'])
 
     def test_pagination_and_partial_inventory_rejection(self):
         with patch.object(sync,'fetch',side_effect=[([{'id':'one'}],'<https://huggingface.co/api/datasets?cursor=n>; rel="next"'),([{'id':'two'}],'')]):
@@ -104,8 +117,8 @@ class CatalogTest(unittest.TestCase):
     def test_incremental_sync_stale_metadata_and_confirmed_removal(self):
         with tempfile.TemporaryDirectory() as tmp:
             out=Path(tmp)/'data/catalog.json';state=Path(tmp)/'state'
-            with patch.object(sync,'hf_catalog',return_value=[HF_ROW]),patch.object(sync,'ms_catalog',return_value=[]),patch.object(sync,'fetch',side_effect=[(INFO,''),(README,'')]) as fetch:
-                first=sync.synchronize(out,state,now=NOW);self.assertEqual(fetch.call_count,2)
+            with patch.object(sync,'hf_catalog',return_value=[HF_ROW]),patch.object(sync,'ms_catalog',return_value=[]),patch.object(sync,'fetch',return_value=(PORTAL,'')) as fetch:
+                first=sync.synchronize(out,state,now=NOW);self.assertEqual(fetch.call_count,1)
             with patch.object(sync,'hf_catalog',return_value=[HF_ROW]),patch.object(sync,'ms_catalog',return_value=[]),patch.object(sync,'fetch') as fetch:
                 same=sync.synchronize(out,state,now=NOW+timedelta(hours=1));fetch.assert_not_called();self.assertEqual(first['snapshotId'],same['snapshotId'])
             changed={**HF_ROW,'sha':'b'*40}

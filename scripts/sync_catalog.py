@@ -7,7 +7,7 @@ from email.utils import parsedate_to_datetime
 import hashlib
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import random
 import re
 import sys
@@ -16,6 +16,8 @@ import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode, urlparse
 from urllib.request import Request, urlopen
+
+import yaml
 
 try:
     from .catalog_store import publish, read_records, encoded, valid_number, camera_resolution, scene_fields
@@ -48,7 +50,7 @@ def metadata_request(url):
         request.add_unredirected_header('Authorization', 'Bearer ' + token)
     return request
 
-def fetch(url):
+def fetch(url, *, load=json.load):
     global _THROTTLE_UNTIL, _NETWORK_LIMIT, _NETWORK_ACTIVE
     for attempt in range(4):
         try:
@@ -60,7 +62,7 @@ def fetch(url):
                 _NETWORK_ACTIVE += 1
             try:
                 with urlopen(metadata_request(url), timeout=30) as response:
-                    return json.load(response), response.headers.get('Link', '')
+                    return load(response), response.headers.get('Link', '')
             finally:
                 with _NETWORK_CONDITION:
                     _NETWORK_ACTIVE -= 1
@@ -122,69 +124,89 @@ def ms_catalog():
 def ms_file(repo, path):
     return f'{MS}/api/v1/datasets/{repo}/repo?' + urlencode({'Revision': 'master', 'FilePath': path})
 
-def normalize(repo, hf, ms, info, readme):
-    features = info.get('features', {})
-    keys = ' '.join(features).lower()
-    mods = []
-    for name, present in [
-        ('RGB', any(v.get('dtype') == 'video' and 'depth' not in k for k,v in features.items())),
-        ('Depth', 'depth' in keys), ('Hand Pose', 'hand_' in keys), ('Gaze', 'gaze' in keys),
-        ('Eye Camera', 'eye_rgb' in keys), ('EMG', 'emg' in keys), ('EEG', 'eeg' in keys),
-        ('Manus', readme.get('hand_capture_type') == 'glove' or 'hand_skeleton' in keys),
-        ('Audio', any(v.get('dtype') == 'audio' for v in features.values())), ('IMU', 'imu' in keys)]:
-        if present:
-            mods.append(name)
-    level = re.match(r'(l[123])(?:_|-)', repo.split('/')[-1], re.I)
+def normalize(repo, hf, ms, metadata):
     tags = hf.get('tags', []) + (ms.get('UserDefineTags') or '').split(',')
-    explicit = readme.get('level') or next((x.upper() for x in tags if x.upper() in ('L1','L2','L3')), None)
-    level_conflict = bool(explicit in ('L1','L2','L3') and level and explicit != level[1].upper())
-    level = explicit if explicit in ('L1','L2','L3') else level[1].upper() if level else 'Unknown'
-    seconds = readme.get('duration_s')
-    if seconds is None and valid_number(info.get('fps')) and info['fps'] > 0 and valid_number(info.get('total_frames'), True):
-        seconds = info['total_frames'] / info['fps']
-    scene = readme.get('scene') or {}
-    scene, scene_category = scene_fields(scene)
+    named_level = re.match(r'(l[123])(?:_|-)', repo.split('/')[-1], re.I)
+    explicit = metadata.get('level') or next((tag.upper() for tag in tags if tag.upper() in ('L1', 'L2', 'L3')), None)
+    level = explicit if explicit in ('L1', 'L2', 'L3') else named_level[1].upper() if named_level else 'Unknown'
+    scene, scene_category = scene_fields(metadata.get('scene'))
     revision = hf.get('sha') or 'main'
-    resolution, primary_camera, resolution_source = camera_resolution(repo, features, readme.get('cameras'))
+    primary = metadata.get('primary_camera')
+    resolution = metadata.get('resolution')
+    resolution_source = 'metadata'
+    if not resolution:
+        resolution, _, resolution_source = camera_resolution(repo)
     videos = []
-    # Only build URLs from the dataset's declared video template, never assumed files.
-    template = info.get('video_path')
-    if (hf or ms) and template and info.get('total_episodes', 0) > 0:
-        primary = primary_camera
-        ordered = sorted(features.items(), key=lambda item: item[0] != primary)
-        for key, value in ordered:
-            if value.get('dtype') != 'video' or 'depth' in key:
-                continue  # Depth HEVC streams are not browser RGB previews.
-            try:
-                path = template.format(episode_chunk=0, episode_index=0, video_key=key)
-                url = f'{HF}/datasets/{repo}/resolve/{revision}/{quote(path, safe="/")}' if hf else ms_file(repo, path)
-                videos.append({'key': key, 'url': url})
-            except (ValueError, KeyError):
-                continue
+    preview = metadata.get('preview_video')
+    if preview and (hf or ms):
+        url = (f'{HF}/datasets/{repo}/resolve/{revision}/{quote(preview, safe="/")}'
+               if hf else ms_file(repo, preview))
+        videos.append({'key': primary or 'preview', 'url': url})
     return {
         'id': repo, 'repo': repo, 'name': repo.split('/')[-1].replace('_', ' '),
-        'level': level, 'scene': scene or '', 'sceneCategory': scene_category, 'task': readme.get('task_name') or '',
-        'description': readme.get('task_description') or '', 'mods': mods,
-        'resolution': resolution, 'primaryCamera': primary_camera, 'resolutionSource': resolution_source,
-        'episodes': info.get('total_episodes'), 'durationSeconds': seconds,
-        'sizeBytes': readme.get('size_bytes'), 'downloads': hf.get('downloads'),
+        'level': level, 'scene': scene, 'sceneCategory': scene_category,
+        'task': metadata.get('task_name') or '', 'description': metadata.get('example_task_description') or '',
+        'mods': metadata.get('modalities') or [], 'resolution': resolution, 'primaryCamera': primary,
+        'resolutionSource': resolution_source, 'episodes': metadata.get('num_recordings'),
+        'durationSeconds': metadata.get('duration_s'), 'sizeBytes': metadata.get('size_bytes'),
+        'downloads': hf.get('downloads'),
         'updated': hf.get('lastModified') or (datetime.fromtimestamp(ms['GmtModified'], timezone.utc).isoformat() if ms.get('GmtModified') else ''),
         'public': not hf.get('private', False), 'gated': hf.get('gated', False),
-        'license': next((t.split(':', 1)[1] for t in tags if t.startswith('license:')), ms.get('License')),
+        'license': metadata.get('license') or next((t.split(':', 1)[1] for t in tags if t.startswith('license:')), ms.get('License')),
         'hubs': {**({'huggingface': {'repo': repo, 'revision': revision, 'url': f'{HF}/datasets/{repo}'}} if hf else {}),
                  **({'modelscope': {'repo': repo, 'revision': 'master', 'url': f'{MS}/datasets/{repo}'}} if ms else {})},
-        'videos': videos,
-        'streams': [{'key': k, 'dtype': v.get('dtype'), 'shape': v.get('shape'), 'rate': v.get('fps', v.get('sample_rate'))} for k,v in features.items() if k.startswith('observation.')],
-        'levelConflict': level_conflict,
-        'derivedMetrics': ['durationSeconds'] if readme.get('duration_s') is None and seconds is not None else [],
-        'metadataSources': [f'{HF}/datasets/{repo}/raw/{revision}/meta/{name}.json' for name in ('info','readme')] if hf else [ms_file(repo, f'meta/{name}.json') for name in ('info','readme')] if ms else [],
+        'videos': videos, 'streams': [],
+        'levelConflict': bool(explicit in ('L1', 'L2', 'L3') and named_level and explicit != named_level[1].upper()),
+        'derivedMetrics': [],
+        'metadataSources': [portal_url(repo, 'huggingface' if hf else 'modelscope', revision)] if hf or ms else [],
     }
+
+
+def portal_url(repo, hub, revision):
+    if hub == 'huggingface':
+        return f'{HF}/datasets/{repo}/raw/{revision}/portal.yaml'
+    return ms_file(repo, 'portal.yaml')
+
+
+def validate_portal(metadata, repo):
+    if not isinstance(metadata, dict) or type(metadata.get('schema_version')) is not int or metadata['schema_version'] != 1:
+        raise ValueError('Expected portal.yaml schema_version 1')
+    if metadata.get('repo_id') not in (None, repo):
+        raise ValueError('repo_id does not match the repository')
+    for field in ('level', 'task_name', 'example_task_description', 'primary_camera', 'license'):
+        value = metadata.get(field)
+        if value is not None and not isinstance(value, str):
+            raise ValueError(f'Invalid {field}')
+    for field in ('num_recordings', 'duration_s', 'size_bytes'):
+        value = metadata.get(field)
+        if value is not None and not valid_number(value, integer=field != 'duration_s'):
+            raise ValueError(f'Invalid {field}')
+    scene = metadata.get('scene')
+    if scene is not None and not (isinstance(scene, str) or isinstance(scene, dict) and
+                                   all(scene.get(k) is None or isinstance(scene[k], str) for k in ('area', 'name', 'category'))):
+        raise ValueError('Invalid scene')
+    modalities = metadata.get('modalities')
+    if modalities is not None and not (isinstance(modalities, list) and all(isinstance(value, str) for value in modalities)):
+        raise ValueError('Invalid modalities')
+    resolution = metadata.get('resolution')
+    if resolution is not None and not (isinstance(resolution, str) and re.fullmatch(r'[1-9]\d*x[1-9]\d*', resolution)):
+        raise ValueError('Invalid resolution')
+    preview = metadata.get('preview_video')
+    if preview is not None and (not isinstance(preview, str) or not preview or
+                                PurePosixPath(preview).is_absolute() or any(part in ('', '.', '..') for part in preview.split('/')) or
+                                any(char in preview for char in '\\:?#') or not preview.lower().endswith('.mp4')):
+        raise ValueError('Expected a repository-relative MP4 preview_video')
+    return metadata
+
+
 
 def source_record(repo, hub, listing, cache_root, now, warnings, force=False):
     cache_path = cache_root / (hashlib.sha256((hub + '/' + repo).encode()).hexdigest() + '.json')
     try:
         cached = json.loads(cache_path.read_text()) if cache_path.exists() else None
         if cached and not all(key in cached for key in ('fingerprint', 'checkedAt', 'record')):
+            cached = None
+        if cached and cached.get('metadataFormat') != 'portal.yaml':
             cached = None
     except (ValueError, OSError):
         cached = None
@@ -194,29 +216,23 @@ def source_record(repo, hub, listing, cache_root, now, warnings, force=False):
         age = (now - datetime.fromisoformat(cached['checkedAt'])).total_seconds()
         if (hub == 'huggingface' and fingerprint) or age < 86400:
             return cached['record'], 'ok', cached['checkedAt']
-    base = f"{HF}/datasets/{repo}/raw/{listing.get('sha') or 'main'}/meta/"
-    values, errors = {}, []
-    for name in ('info', 'readme'):
-        url = base + name + '.json' if hub == 'huggingface' else ms_file(repo, f'meta/{name}.json')
-        try:
-            value = fetch(url)[0]
-            if not isinstance(value, dict) or 'Code' in value or 'Message' in value and 'Data' in value:
-                raise ValueError('Unexpected metadata response')
-            values[name] = value
-        except Exception as exc:
-            errors.append(f'{hub}/{repo}/meta/{name}.json: {exc}')
-    warnings.extend(errors)
-    if errors and cached:
-        return cached['record'], 'stale', cached['checkedAt']
-    record = normalize(repo, listing if hub == 'huggingface' else {}, listing if hub == 'modelscope' else {}, values.get('info', {}), values.get('readme', {}))
+    revision = (listing.get('sha') or 'main') if hub == 'huggingface' else 'master'
+    try:
+        metadata = validate_portal(fetch(portal_url(repo, hub, revision), load=yaml.safe_load)[0], repo)
+    except (HTTPError, URLError, TimeoutError, ValueError, yaml.YAMLError) as exc:
+        warnings.append(f'{hub}/{repo}/portal.yaml: {exc}')
+        if cached:
+            return cached['record'], 'stale', cached['checkedAt']
+        metadata = None
+    record = normalize(repo, listing if hub == 'huggingface' else {}, listing if hub == 'modelscope' else {}, metadata or {})
     record['metadataFingerprint'] = fingerprint
-    record['metadataRevision'] = listing.get('sha') or 'master' if hub == 'modelscope' else listing.get('sha') or 'main'
-    if not errors:
+    record['metadataRevision'] = revision
+    if metadata is not None:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         temp = cache_path.with_suffix('.tmp')
-        temp.write_bytes(encoded({'fingerprint': fingerprint, 'checkedAt': now.isoformat(), 'record': record}))
+        temp.write_bytes(encoded({'metadataFormat': 'portal.yaml', 'fingerprint': fingerprint, 'checkedAt': now.isoformat(), 'record': record}))
         temp.replace(cache_path)
-    return record, 'missing' if errors else 'ok', now.isoformat()
+    return record, 'missing' if metadata is None else 'ok', now.isoformat()
 
 def synchronize(output, state_root, *, workers=4, force=False, now=None, preview_limit=50):
     global _NETWORK_LIMIT

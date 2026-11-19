@@ -30,7 +30,9 @@ jobs:
       - name: Sync catalog metadata
         env:
           HF_TOKEN: ${{ secrets.HF_ACCESS_TOKEN }}
-        run: python scripts/sync_catalog.py
+        run: |
+          python -m pip install 'PyYAML>=6,<7'
+          python scripts/sync_catalog.py
       - run: npm test && npm run check
       # GITHUB_TOKEN commits do not trigger a second push workflow; deploy in this workflow.
       - name: Commit catalog snapshot
