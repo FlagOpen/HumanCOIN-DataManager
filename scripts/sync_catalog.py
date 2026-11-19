@@ -44,10 +44,19 @@ def retry_delay(value, attempt):
 
 def metadata_request(url):
     request = Request(url, headers={'User-Agent': 'HumanCOIN-DataManager/3.0'})
-    token = os.environ.get('HF_TOKEN') or os.environ.get('HF_ACCESS_TOKEN')
-    if token and urlparse(url).scheme == 'https' and urlparse(url).hostname == 'huggingface.co':
-        # Do not forward the credential to redirect destinations (e.g. third-party CDNs).
-        request.add_unredirected_header('Authorization', 'Bearer ' + token)
+    parsed = urlparse(url)
+    if parsed.scheme != 'https':
+        return request
+    # Credentials are scoped to the original request, including on CDN redirects.
+    if parsed.hostname == 'huggingface.co':
+        token = os.environ.get('HF_TOKEN') or os.environ.get('HF_ACCESS_TOKEN')
+        if token:
+            request.add_unredirected_header('Authorization', 'Bearer ' + token)
+    elif parsed.hostname == 'www.modelscope.cn' and re.fullmatch(r'/api/v1/datasets/HumanCOIN/[^/]+/repo', parsed.path):
+        token = os.environ.get('MODELSCOPE_TOKEN') or os.environ.get('MODELSCOPE_API_TOKEN')
+        if token:
+            # The legacy dataset file endpoint authenticates with the SDK session cookie.
+            request.add_unredirected_header('Cookie', 'm_session_id=' + token)
     return request
 
 def fetch(url, *, load=json.load):
