@@ -30,11 +30,9 @@ def main():
     with tempfile.TemporaryDirectory(prefix='humancoin-buttons-',dir=ROOT) as tmp:
         tmp=Path(tmp);site=tmp/'docs';shutil.copytree(ROOT/'docs',site);data=site/'data';shutil.rmtree(data);data.mkdir()
         download=tmp/'downloads';download.mkdir()
-        actual=read_records(ROOT/'docs/data');preview=next(d['preview'] for d in actual if d.get('preview'))
-        for asset in preview.values():
-            target=data/asset['path'];target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(ROOT/'docs/data'/asset['path'],target)
-        (site/'test-media').mkdir()
-        shutil.copy2(ROOT/'docs/data'/preview['clip']['path'],site/'test-media/preview.mp4')
+        poster=sorted((ROOT/'docs/data/media').glob('*.jpg'))[0]
+        from scripts.preview_assets import asset
+        preview={'poster':asset(data,poster.read_bytes(),'jpg')}
         flags={'root':True,'index':False};requests=[]
         class Handler(SimpleHTTPRequestHandler):
             def do_GET(self):
@@ -55,7 +53,7 @@ def main():
                          'resolution':'1280x720' if i%5==0 else '1920x1184','mods':['RGB']+(['EMG'] if i%2 else [])+(['EEG'] if i%5==0 else []),
                          'episodes':i+1,'durationSeconds':i+10,'downloads':1000-i,'sizeBytes':1000+i,'updated':f'2026-11-{i%10+1:02d}',
                          'public':True,'hubs':hubs,'streams':[{'key':'observation.eeg','dtype':'float32','shape':[32],'rate':250}],
-                         'videos':[{'key':'bad_camera','url':base+'missing.mp4'},{'key':'good_camera','url':base+'test-media/preview.mp4'}],
+                         'videos':[], 'preview':preview,
                          'sourceStatus':{hub:'ok' for hub in hubs}})
         publish(data/'catalog.json',rows,generated_at=datetime.now(timezone.utc).isoformat(),sources={},warnings=[])
         browser=None
@@ -147,12 +145,12 @@ def main():
             b.js("document.querySelector('.thumb').focus()")
             b.call('/session/'+b.session+'/actions',{'actions':[{'type':'key','id':'keyboard','actions':[{'type':'keyDown','value':'\ue007'},{'type':'keyUp','value':'\ue007'}]}]})
             b.wait("return document.getElementById('modal').classList.contains('show')&&!!document.getElementById('camera')");b.click('#modal .close')
-            b.click('.thumb[data-action="preview"]');b.wait("return !!document.getElementById('camera')")
-            b.wait("return document.getElementById('videoStatus').textContent.includes('failed')")
-            select('camera','1');b.wait("return document.getElementById('videoStatus').textContent==='Ready to play.'")
-            assert b.js("return document.getElementById('previewVideo').src").endswith('test-media/preview.mp4')
+            b.click('.thumb[data-action="preview"]')
+            b.wait("return document.querySelector('#modalBody img.sample-main')?.naturalWidth>0")
+            assert b.js("return document.querySelector('#modalBody .sensorpanel').textContent.includes('250 Hz')")
+            assert not b.js("return !!document.querySelector('#modalBody video')")
             b.click('#previewDownload');b.wait("return document.getElementById('modalTitle').textContent==='Download dataset'");b.click('#modal .close')
-            checks.append('clickable cover, camera switching/error recovery and preview-to-download action')
+            checks.append('clickable cover, stream metadata and preview-to-download action')
             b.click('#checkUpdates');b.wait("return document.getElementById('updateStatus').textContent.includes('Catalog is current')");assert b.js("return document.getElementById('applyUpdate').hidden")
             flags['root']=True;b.click('#checkUpdates');b.wait("return document.getElementById('updateStatus').textContent.startsWith('Update check failed')")
             assert b.js("return document.getElementById('selectCount').textContent")=='2 datasets';flags['root']=False

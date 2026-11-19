@@ -26,6 +26,7 @@ except ImportError:
 
 HF = 'https://huggingface.co'
 MS = 'https://www.modelscope.cn'
+METADATA_FORMAT = 'portal.yaml+sensor-streams'
 ROOT = Path(__file__).resolve().parents[1]
 _NETWORK_LOCK = threading.Lock()
 _THROTTLE_UNTIL = 0.0
@@ -164,7 +165,11 @@ def normalize(repo, hf, ms, metadata):
         'license': metadata.get('license') or next((t.split(':', 1)[1] for t in tags if t.startswith('license:')), ms.get('License')),
         'hubs': {**({'huggingface': {'repo': repo, 'revision': revision, 'url': f'{HF}/datasets/{repo}'}} if hf else {}),
                  **({'modelscope': {'repo': repo, 'revision': 'master', 'url': f'{MS}/datasets/{repo}'}} if ms else {})},
-        'videos': videos, 'streams': [],
+        'videos': videos, 'streams': [
+            {'key': item['feature_key'], 'dtype': item.get('dtype'), 'shape': item['shape'],
+             'rate': item.get('sample_rate_hz')}
+            for item in metadata.get('sensor_streams', [])
+        ],
         'levelConflict': bool(explicit in ('L1', 'L2', 'L3') and named_level and explicit != named_level[1].upper()),
         'derivedMetrics': [],
         'metadataSources': [portal_url(repo, 'huggingface' if hf else 'modelscope', revision)] if hf or ms else [],
@@ -175,6 +180,26 @@ def portal_url(repo, hub, revision):
     if hub == 'huggingface':
         return f'{HF}/datasets/{repo}/raw/{revision}/portal.yaml'
     return ms_file(repo, 'portal.yaml')
+
+def recording_streams(info):
+    features = info.get('features') if isinstance(info, dict) else None
+    if not isinstance(features, dict):
+        raise ValueError('Expected recording features')
+    streams = []
+    bookkeeping = {'timestamp', 'frame_index', 'episode_index', 'index', 'task_index'}
+    for key, feature in features.items():
+        if key in bookkeeping or not isinstance(feature, dict):
+            continue
+        dtype, shape = feature.get('dtype'), feature.get('shape')
+        if not isinstance(dtype, str) or not isinstance(shape, list) or not all(type(n) is int and n >= 0 for n in shape):
+            continue
+        rate = feature.get('fps')
+        details = feature.get('info')
+        if not valid_number(rate) and isinstance(details, dict):
+            rate = details.get('video.fps')
+        streams.append({'key': key, 'dtype': dtype, 'shape': shape,
+                        'rate': rate if valid_number(rate) and rate > 0 else None})
+    return streams
 
 
 def validate_portal(metadata, repo):
@@ -197,6 +222,22 @@ def validate_portal(metadata, repo):
     modalities = metadata.get('modalities')
     if modalities is not None and not (isinstance(modalities, list) and all(isinstance(value, str) for value in modalities)):
         raise ValueError('Invalid modalities')
+    streams = metadata.get('sensor_streams', [])
+    if not isinstance(streams, list):
+        raise ValueError('Expected a sensor_streams list')
+    keys = set()
+    for item in streams:
+        key = item.get('feature_key') if isinstance(item, dict) else None
+        if not isinstance(key, str) or not key.strip() or key in keys:
+            raise ValueError('Expected a unique sensor_streams feature_key')
+        keys.add(key)
+        shape, rate, dtype = item.get('shape'), item.get('sample_rate_hz'), item.get('dtype')
+        if not isinstance(shape, list) or not all(type(n) is int and n >= 0 for n in shape):
+            raise ValueError(f'Invalid sensor stream shape for {key}')
+        if rate is not None and (not valid_number(rate) or rate <= 0):
+            raise ValueError(f'Invalid sample_rate_hz for {key}')
+        if dtype is not None and not isinstance(dtype, str):
+            raise ValueError(f'Invalid dtype for {key}')
     resolution = metadata.get('resolution')
     if resolution is not None and not (isinstance(resolution, str) and re.fullmatch(r'[1-9]\d*x[1-9]\d*', resolution)):
         raise ValueError('Invalid resolution')
@@ -215,15 +256,15 @@ def source_record(repo, hub, listing, cache_root, now, warnings, force=False):
         cached = json.loads(cache_path.read_text()) if cache_path.exists() else None
         if cached and not all(key in cached for key in ('fingerprint', 'checkedAt', 'record')):
             cached = None
-        if cached and cached.get('metadataFormat') != 'portal.yaml':
+        if cached and cached.get('metadataFormat') not in ('portal.yaml', 'portal.yaml+recording-info', METADATA_FORMAT):
             cached = None
     except (ValueError, OSError):
         cached = None
     fingerprint = listing.get('sha') if hub == 'huggingface' else str(listing.get('GmtModified') or '')
-    if cached and 'sceneCategory' in cached['record'] and 'resolution' in cached['record'] and not force and cached['fingerprint'] == fingerprint:
+    if cached and cached['metadataFormat'] == METADATA_FORMAT and not force and cached['fingerprint'] == fingerprint:
         # Commit-addressed HF data can be reused indefinitely. Branch-based sources are rechecked daily.
         age = (now - datetime.fromisoformat(cached['checkedAt'])).total_seconds()
-        if (hub == 'huggingface' and fingerprint) or age < 86400:
+        if (hub == 'huggingface' and fingerprint and not cached.get('streamReadFailed')) or age < 86400:
             return cached['record'], 'ok', cached['checkedAt']
     revision = (listing.get('sha') or 'main') if hub == 'huggingface' else 'master'
     try:
@@ -237,13 +278,28 @@ def source_record(repo, hub, listing, cache_root, now, warnings, force=False):
     record['metadataFingerprint'] = fingerprint
     record['metadataRevision'] = revision
     if metadata is not None:
+        example = metadata.get('example_recording')
+        stream_read_failed = False
+        if 'sensor_streams' not in metadata and isinstance(example, str) and re.fullmatch(r'[a-zA-Z0-9_-][a-zA-Z0-9_. -]*', example):
+            path = f'{quote(example)}/meta/info.json' if hub == 'huggingface' else f'{example}/meta/info.json'
+            url = f'{HF}/datasets/{repo}/raw/{revision}/{path}' if hub == 'huggingface' else ms_file(repo, path)
+            try:
+                record['streams'] = recording_streams(fetch(url)[0])
+                record['metadataSources'].append(url)
+            except (URLError, TimeoutError, ValueError) as exc:
+                stream_read_failed = True
+                warnings.append(f'{hub}/{repo}/example_recording/meta/info.json: {exc}')
+                if cached and cached['fingerprint'] == fingerprint:
+                    record['streams'] = cached['record'].get('streams', [])
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         temp = cache_path.with_suffix('.tmp')
-        temp.write_bytes(encoded({'metadataFormat': 'portal.yaml', 'fingerprint': fingerprint, 'checkedAt': now.isoformat(), 'record': record}))
+        temp.write_bytes(encoded({'metadataFormat': METADATA_FORMAT, 'fingerprint': fingerprint,
+                                  'checkedAt': now.isoformat(), 'streamReadFailed': stream_read_failed,
+                                  'record': record}))
         temp.replace(cache_path)
     return record, 'missing' if metadata is None else 'ok', now.isoformat()
 
-def synchronize(output, state_root, *, workers=4, force=False, now=None, preview_limit=50):
+def synchronize(output, state_root, *, workers=4, force=False, now=None, preview_limit=None):
     global _NETWORK_LIMIT
     _NETWORK_LIMIT = workers
     now = now or datetime.now(timezone.utc)
@@ -310,7 +366,16 @@ def synchronize(output, state_root, *, workers=4, force=False, now=None, preview
         from .preview_assets import attach_previews
     except ImportError:
         from preview_assets import attach_previews
-    attach_previews(datasets, Path(output).parent, state_root, warnings, max_new=preview_limit)
+    def cover_sources(dataset):
+        repo = dataset['id']
+        if repo in hf:
+            revision = hf[repo].get('sha') or 'main'
+            yield f'{HF}/datasets/{repo}/resolve/{revision}/preview.jpg', revision if revision != 'main' else hf[repo].get('lastModified') or now.date().isoformat()
+        if repo in ms:
+            yield ms_file(repo, 'preview.jpg'), ms[repo].get('GmtModified') or now.date().isoformat()
+
+    attach_previews(datasets, Path(output).parent, state_root, warnings,
+                    sources_for=cover_sources, fetch=fetch, max_new=preview_limit)
     result = publish(output, datasets, generated_at=now.isoformat(), sources=sources, warnings=warnings)
     state_root.mkdir(parents=True, exist_ok=True)
     temp = state_file.with_suffix('.tmp')
@@ -326,11 +391,11 @@ def main():
     parser.add_argument('--output', type=Path, default=ROOT / 'docs/data/catalog.json')
     parser.add_argument('--state-dir', type=Path, default=ROOT / 'sync-state')
     parser.add_argument('--workers', type=int, choices=range(1, 9), default=4)
-    parser.add_argument('--preview-limit', type=int, default=50, help='Maximum new video previews per sync; cached previews are always reused')
+    parser.add_argument('--preview-limit', type=int, help='Maximum new cover image requests per sync; cached covers are reused')
     parser.add_argument('--force', action='store_true', help='Re-read unchanged source metadata')
     parser.add_argument('--validate', action='store_true', help='Validate the published snapshot without network access')
     args = parser.parse_args()
-    if args.preview_limit < 0:
+    if args.preview_limit is not None and args.preview_limit < 0:
         parser.error('--preview-limit must be nonnegative')
     try:
         if args.validate:

@@ -51,7 +51,7 @@ The JSON file contains a selection list, not dataset files. Importing it does no
 
 ## Previews and catalog updates
 
-Cards provide posters and short video previews. Click **Preview** for video and sensor information. Autoplay depends on browser settings. Full videos currently load primarily from Hugging Face, requiring network connectivity and any necessary access approval. The download platform selector does not change preview sources.
+Cards and dataset details display the dataset cover. To publish a cover, place a JPEG named `preview.jpg` (up to 2 MiB) at the dataset repository root.
 
 The catalog refreshes daily at **08:00 and 09:00 Asia/Shanghai** and can also be refreshed manually by maintainers. Apply an update when the portal offers it. To avoid removing datasets during temporary API failures, removal requires two consecutive successful syncs confirming absence from all sources.
 

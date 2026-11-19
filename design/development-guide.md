@@ -65,7 +65,16 @@ The catalog reads `portal.yaml` at the root of each dataset repository on Huggin
 - `example_task_description` for the card summary
 - `num_recordings`, `duration_s` in seconds, and `size_bytes` for repository-level totals
 - `resolution` as `WIDTHxHEIGHT`, `modalities` as a list, and `primary_camera` as the stream identifier
-- `preview_video` as a repository-relative MP4 path, when available
+- `sensor_streams` for the repository-level stream definitions. Use `feature_key`, `shape`, optional `sample_rate_hz` and optional `dtype`. These names follow the recording README stream definitions. Add camera streams using their feature keys and frame shapes. Per-recording sample counts belong in the recording README.
+- `example_recording` can provide a fallback through its `meta/info.json` for older YAML files that omit `sensor_streams`.
+
+```yaml
+sensor_streams:
+  - feature_key: eye_gaze_predict
+    dtype: float32
+    shape: [2]
+    sample_rate_hz: 30
+```
 
 Repositories awaiting a valid YAML file appear with basic listing information and a metadata warning. A previously cached YAML record can still be used during a fetch failure.
 
@@ -75,7 +84,7 @@ Default concurrency is 4 (`--workers 1` through `8`). Requests have bounded retr
 
 `sync-state/` contains only public normalized metadata. Commit it along with `docs/data/` so CI has durable incrementality and removal state. Deleting this cache safely causes metadata to be fetched again; do not add credentials to it. Concurrent sync invocations against the same output should be serialized; the scheduled workflow already serializes refresh jobs.
 
-HF and MS same-name metadata conflicts are reported rather than added together. A source exposing only a main/master branch has a mutable reference; such downloads cannot promise historical reproducibility. No hub credentials or full dataset snapshots are stored by this website. Sync uses FFmpeg to generate a 480-pixel-wide JPEG poster and a 4-second, 12-fps muted MP4 preview from the first RGB stream. These small assets are content-addressed, shared when identical, validated and retained with their snapshots. Generation is cached per source URL/version and bounded to 50 new previews per sync; use `--preview-limit N` to change the budget (0 reuses cache only). Missing FFmpeg or failed media extraction is reported without breaking catalog browsing. FFmpeg is required to generate new assets, but is not required to serve already-generated assets; the scheduled workflow installs it if missing.
+HF and MS same-name metadata conflicts are reported rather than added together. A source exposing only a main/master branch has a mutable reference; such downloads cannot promise historical reproducibility. No hub credentials or full dataset snapshots are stored by this website. Sync fetches `preview.jpg` from the dataset root, trying Hugging Face first and ModelScope as a fallback. JPEG covers up to 2 MiB are cached per source revision and validated with the catalog. Use `--preview-limit N` to cap new image requests or `--preview-limit 0` to reuse cached covers only.
 
 ## Visitor refresh
 

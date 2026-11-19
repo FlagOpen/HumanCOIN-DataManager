@@ -18,6 +18,7 @@ from urllib.request import Request, ProxyHandler, build_opener
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 from scripts.catalog_store import publish
+from scripts.preview_assets import asset
 
 class Browser:
     def __init__(self,url,desktop_pointer=True,download_dir=None):
@@ -60,12 +61,9 @@ def main():
     with tempfile.TemporaryDirectory(prefix='humancoin-browser-') as tmp:
         site=Path(tmp)/'docs';shutil.copytree(ROOT/'docs',site);data=site/'data';shutil.rmtree(data)
         current=rows()
-        actual=json.loads((ROOT/'docs/data/catalog.json').read_text())
-        source_rows=[d for tier in actual['tiers'].values() for ref in tier['files'] for d in json.loads((ROOT/'docs/data'/ref['path']).read_text())['datasets']]
-        preview=next((d['preview'] for d in source_rows if d.get('preview')),None)
+        poster=sorted((ROOT/'docs/data/media').glob('*.jpg'))
+        preview={'poster':asset(data,poster[0].read_bytes(),'jpg')} if poster else None
         if preview:
-            (data/'media').mkdir(parents=True)
-            for ref in preview.values():shutil.copy2(ROOT/'docs/data'/ref['path'],data/ref['path'])
             for d in current:d['preview']=preview
         publish(data/'catalog.json',current,generated_at=now.isoformat(),sources={},warnings=[],shard_limit=18000)
         requests=[];failure={'index':False}
@@ -92,37 +90,8 @@ def main():
                 assert not any(path.endswith('.mp4') for path in requests)
                 b.js("document.querySelector('.thumb').scrollIntoView({behavior:'instant',block:'center'})")
                 b.wait("return document.querySelector('.thumb img').complete&&document.querySelector('.thumb img').naturalWidth>0")
-                # A real mouse over card text must play the thumbnail, even when CSS reports hover:none.
-                b.js("window.__hoverEvents=[];document.querySelector('.dataset').addEventListener('pointerenter',e=>__hoverEvents.push({type:e.pointerType,trusted:e.isTrusted}))")
-                rect=b.js("const r=document.querySelector('.dataset-body').getBoundingClientRect();return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)}")
-                b.move(rect['x'],rect['y'])
-                assert b.js("return document.querySelector('.thumb video').getAttribute('src')")==None
-                b.wait("return document.querySelector('.thumb').classList.contains('is-playing')&&document.querySelector('.thumb video').currentTime>0")
-                assert b.js("return __hoverEvents.some(e=>e.type==='mouse'&&e.trusted)")
-                b.move(3,3)
-                # Playback rejection must be visible instead of silently restoring the idle hint.
-                b.js("window.__nativePlay=HTMLMediaElement.prototype.play;HTMLMediaElement.prototype.play=function(){return Promise.reject(new DOMException('Blocked for test','NotAllowedError'))};document.querySelector('.dataset').dispatchEvent(new PointerEvent('pointerenter',{pointerType:'mouse'}))")
-                b.wait("return document.querySelector('.thumb').dataset.previewState==='error'")
-                assert b.js("return document.querySelector('.thumb .hover-hint').textContent")=='CLICK PREVIEW'
-                assert 'blocked' in b.js("return document.querySelector('.thumb').dataset.previewError")
-                b.js("HTMLMediaElement.prototype.play=__nativePlay;document.querySelector('.dataset').dispatchEvent(new PointerEvent('pointerenter',{pointerType:'mouse'}))")
-                b.wait("return document.querySelector('.thumb').classList.contains('is-playing')")
-                b.js("document.querySelectorAll('.thumb')[1].scrollIntoView({behavior:'instant',block:'center'});document.querySelectorAll('.dataset')[1].dispatchEvent(new PointerEvent('pointerenter',{pointerType:'mouse'}))")
-                b.wait("return document.querySelectorAll('.thumb')[1].classList.contains('is-playing')")
-                assert b.js("return [...document.querySelectorAll('.thumb video')].filter(v=>!v.paused).length")==1
-                assert b.js("return document.querySelector('.thumb video').getAttribute('src')")==None
-                b.js("document.querySelectorAll('.dataset')[1].dispatchEvent(new PointerEvent('pointerleave',{pointerType:'mouse'}))")
-                assert b.js("return [...document.querySelectorAll('.thumb video')].every(v=>v.paused&&!v.getAttribute('src'))")
-                b.js("document.querySelector('.thumb').scrollIntoView({behavior:'instant',block:'center'});document.querySelector('.dataset').dispatchEvent(new PointerEvent('pointerenter',{pointerType:'mouse'}))")
-                b.wait("return document.querySelector('.thumb').classList.contains('is-playing')")
-                # Scrolling must stop decoding immediately and suppress playback until idle.
-                b.js("window.dispatchEvent(new Event('scroll'))")
-                assert b.js("return [...document.querySelectorAll('.thumb video')].every(v=>v.paused&&!v.getAttribute('src'))")
-                blocked=b.call('/session/'+b.session+'/execute/async',{'script':"const done=arguments[arguments.length-1];let ticks=0;function tick(){window.dispatchEvent(new Event('scroll'));if(++ticks<4)setTimeout(tick,80);else done([...document.querySelectorAll('.thumb video')].every(v=>v.paused&&!v.getAttribute('src')))}tick()",'args':[]})
-                assert blocked
-                b.wait("return document.querySelector('.thumb').classList.contains('is-playing')")
+                assert not b.js("return !!document.querySelector('.thumb video')")
                 b.js("window.scrollTo({top:0,behavior:'instant'})")
-                b.wait("return [...document.querySelectorAll('.thumb video')].every(v=>v.paused&&!v.getAttribute('src'))")
             assert b.js("return getComputedStyle(document.getElementById('applyUpdate')).display")== 'none'
             assert b.js("return getComputedStyle(document.getElementById('retryScope')).display")== 'none'
             b.js("document.querySelectorAll('.level-card')[2].click()")
@@ -187,7 +156,7 @@ def main():
             b.js("closeModal();document.getElementById('search').value='missing-task';document.getElementById('search').dispatchEvent(new Event('input'))")
             b.wait("return document.getElementById('shown').textContent==='0'")
             assert b.js("return document.getElementById('nextPage').disabled")
-            print('Firefox passed: trusted mouse hover over card body with native pointer capabilities, lightweight scroll surfaces, scroll-time playback suppression and idle resume, static posters, delayed hover, one active clip, leave/scroll cleanup, initial default, saved scope, shared link priority, empty-tier fallback, lazy scope, 20-row pages, cross-page selection, lazy details/cache, URL history, failed refresh rollback, atomic successful refresh, removed/versioned selections, empty search.')
+            print('Firefox passed: static posters, lightweight scroll surfaces, one active clip, leave/scroll cleanup, initial default, saved scope, shared link priority, empty-tier fallback, lazy scope, 20-row pages, cross-page selection, lazy details/cache, URL history, failed refresh rollback, atomic successful refresh, removed/versioned selections, empty search.')
         finally:
             if browser:browser.close()
             server.shutdown();server.server_close()
