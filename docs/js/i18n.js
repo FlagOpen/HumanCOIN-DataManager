@@ -1,5 +1,7 @@
 // Translate portal UI only. Dataset content, metadata, IDs and commands stay verbatim.
 const translations = {
+ 'Hugging Face login':'登录 Hugging Face',
+ 'Run these commands in the terminal you will use to download. Confirm that the displayed username has access to the dataset.':'请在用于下载的终端中运行这些命令，确认显示的账号已获得该数据集的访问权限。',
  'Data availability':'数据开放',
  'The first batch is expected to include approximately':'首批预计开放约',
  '1,200 hours':'1,200 小时',
