@@ -321,7 +321,10 @@ def synchronize(output, state_root, *, workers=4, force=False, now=None, preview
         records, statuses, checks = {}, {}, {}
         for hub, listing in [('huggingface', hf.get(repo)), ('modelscope', ms.get(repo))]:
             if listing is not None:
-                records[hub], statuses[hub], checks[hub] = source_record(repo, hub, listing, state_root / 'sources', now, warnings, force)
+                if hub == 'modelscope' and statuses.get('huggingface') == 'ok':
+                    statuses[hub] = 'mirrored'
+                else:
+                    records[hub], statuses[hub], checks[hub] = source_record(repo, hub, listing, state_root / 'sources', now, warnings, force)
             elif hub in previous.get(repo, {}).get('hubs', {}):
                 key = hub + '/' + repo
                 scans = old_state.get('missing', {}).get(key, 0) + 1
@@ -341,10 +344,6 @@ def synchronize(output, state_root, *, workers=4, force=False, now=None, preview
             d['sourceChecks'] = checks
             if statuses[canonical] != 'ok':
                 d['staleMetrics'] = ['episodes', 'durationSeconds', 'sizeBytes'] if statuses[canonical] == 'stale' else []
-            if all(statuses.get(h) == 'ok' for h in ('huggingface', 'modelscope')):
-                conflicts = [key for key in ('episodes', 'durationSeconds', 'sizeBytes', 'level') if records['huggingface'].get(key) is not None and records['modelscope'].get(key) is not None and records['huggingface'].get(key) != records['modelscope'].get(key)]
-                if conflicts:
-                    warnings.append(repo + ': source metadata conflict: ' + ', '.join(conflicts))
         if d.get('levelConflict'):
             warnings.append(repo + ': explicit tier conflicts with repository name; explicit tier retained')
         d['sourceStatus'] = statuses

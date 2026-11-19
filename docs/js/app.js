@@ -43,8 +43,7 @@ function renderResult(result){
  }
  populateOptions('sceneCategory',result.facets.sceneCategories,'All categories');populateOptions('scene',result.facets.scenes,'All areas');populateOptions('task',result.facets.tasks,'All tasks');el('taskHint').textContent=result.facets.taskCount>100?`Showing 100 of ${count(result.facets.taskCount)} tasks. Refine your search.`:'';populateOptions('resolution',result.facets.resolutions,'All resolutions');
  document.querySelectorAll('.modfilter').forEach(i=>i.parentElement.querySelector('.count').textContent=result.facets.modalities[i.value]||0);
- el('loadStatus').textContent=catalog.quality.warningCount?`Catalog includes ${catalog.quality.warningCount} catalog warnings. Missing statistics appear as —.`:'';
- if(catalog.quality.warningCount){const link=document.createElement('a');link.href='data/'+catalog.quality.report.path;link.textContent=' View report';link.target='_blank';link.rel='noopener noreferrer';el('loadStatus').append(link);}
+ el('loadStatus').textContent='';
  el('retryScope').hidden=true;pageControls(true);syncSelected();
 }
 async function render({history=false}={}){
