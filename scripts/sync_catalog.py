@@ -109,7 +109,22 @@ def hf_catalog():
         raise ValueError('Duplicate records across Hugging Face pages; retry a stable scan')
     return result
 
+class ModelScopeInventoryChanged(ValueError):
+    pass
+
+
 def ms_catalog():
+    for attempt in range(3):
+        try:
+            return ms_catalog_scan()
+        except ModelScopeInventoryChanged as exc:
+            if attempt == 2:
+                raise
+            print(f'{exc}; restarting ModelScope inventory from page 1', file=sys.stderr)
+            time.sleep(retry_delay(None, attempt))
+
+
+def ms_catalog_scan():
     result, page, expected, seen = [], 1, None, set()
     while True:
         data, _ = fetch(MS + '/api/v1/datasets?' + urlencode({'Owner': 'HumanCOIN', 'PageNumber': page, 'PageSize': 100}))
@@ -118,7 +133,9 @@ def ms_catalog():
         if expected is None:
             expected = data['TotalCount']
         if data['TotalCount'] != expected:
-            raise ValueError('ModelScope inventory changed during pagination')
+            raise ModelScopeInventoryChanged(
+                f'ModelScope inventory changed during pagination (page {page}: '
+                f'expected {expected} repositories, received total {data["TotalCount"]})')
         for row in data['Data']:
             key = (row.get('Namespace'), row['Name'])
             if key in seen:
