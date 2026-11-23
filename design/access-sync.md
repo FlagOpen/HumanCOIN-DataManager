@@ -6,8 +6,6 @@ This administrator tool grants accepted users of entry datasets access to all pu
 
 In this GitHub repository, open Settings → Secrets and variables → Actions and add `HF_ACCESS_TOKEN`. Use a token from an account with write/admin access to all target datasets and permission to manage gated access. The catalog refresh workflow also reuses this secret for reading gated metadata. Locally the catalog sync accepts HF_TOKEN, falling back to HF_ACCESS_TOKEN. Never put tokens in frontend configuration or commit them.
 
-After publication on the default branch, the workflow automatically applies missing grants every 5 minutes (UTC minute 02, 07, 12, …, 57), using all public auto-gated HumanCOIN datasets as entry datasets. A user accepted on any such dataset is eligible for the others; explicit target rejections are preserved. GitHub scheduling may be delayed, so this is not a guaranteed 5-minute delivery time.
-
 For a manual preview or apply, open Actions → Sync Hugging Face access → Run workflow. Leave the source field empty to use all public auto-gated HumanCOIN datasets, or enter specific full entry dataset IDs separated by spaces. Leave `apply` unchecked to preview counts. Check the target repositories and counts, then run with `apply` checked to grant access.
 
 Local equivalent (Python 3.10+):

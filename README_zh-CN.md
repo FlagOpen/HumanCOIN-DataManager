@@ -10,8 +10,6 @@ HumanCOIN DataManager 是查找、预览和下载 HumanCOIN 数据集的网页�
 
 前往 [HumanCOIN Hugging Face 主页](https://huggingface.co/HumanCOIN)，选择需要的数据集，按页面提示填写申请信息并提交。启用自动审批的数据集会自动批准申请，下载时仍需使用获批账号认证。
 
-HumanCOIN 每 5 分钟运行一次跨数据集权限同步：在任意公开 `auto` 数据集获批后，系统会补齐其他公开 `auto` 数据集的权限，不必逐个重复申请。定时任务可能延迟，明确被拒绝的权限不会被重新授予。新增数据集也会在后续同步中纳入。
-
 魔搭权限单独管理，以 [HumanCOIN 魔搭主页](https://www.modelscope.cn/organization/HumanCOIN)和具体数据集页面为准；Hugging Face 的授权不会自动同步到魔搭。
 
 ## 快速下载一个数据集

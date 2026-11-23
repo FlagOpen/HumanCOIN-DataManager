@@ -1,7 +1,5 @@
 name: Sync Hugging Face access
 on:
-  schedule:
-    - cron: '2-59/5 * * * *'
   workflow_dispatch:
     inputs:
       sources:
@@ -32,7 +30,6 @@ jobs:
           HF_ACCESS_TOKEN: ${{ secrets.HF_ACCESS_TOKEN }}
           ACCESS_SOURCES: ${{ inputs.sources }}
           ACCESS_APPLY: ${{ inputs.apply }}
-          ACCESS_EVENT: ${{ github.event_name }}
         run: |
           python - <<'PY'
           import os
@@ -41,7 +38,7 @@ jobs:
           sources = os.environ.get('ACCESS_SOURCES', '').split()
           sys.argv = ['sync_hf_access']
           sys.argv += ['--source', *sources] if sources else ['--all-sources']
-          if os.environ['ACCESS_EVENT'] == 'schedule' or os.environ['ACCESS_APPLY'] == 'true':
+          if os.environ['ACCESS_APPLY'] == 'true':
               sys.argv.append('--apply')
           raise SystemExit(main())
           PY

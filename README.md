@@ -10,8 +10,6 @@ The first batch is expected to include approximately **1,200 hours** of data. Fo
 
 Visit [HumanCOIN on Hugging Face](https://huggingface.co/HumanCOIN), open a dataset and complete the access form shown on its page. Automatically approved datasets grant access upon submission; downloads still require authentication with the approved account.
 
-HumanCOIN runs cross-dataset access synchronization every 5 minutes. Once approved on any public `auto` dataset, users receive access to the other public `auto` datasets without applying to each one. Scheduled runs may be delayed, and explicit rejections are preserved. Newly added datasets are included in subsequent runs.
-
 ModelScope permissions are managed separately. Follow the requirements on the [HumanCOIN ModelScope page](https://www.modelscope.cn/organization/HumanCOIN) and individual dataset pages. Hugging Face approval does not grant ModelScope access.
 
 ## Download a single dataset
