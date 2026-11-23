@@ -29,9 +29,9 @@ function renderMetrics(){const s=catalog.stats;const values=[count(s.datasets),c
 function populateOptions(id,values,label){const current=el(id).value;el(id).replaceChildren(new Option(label,''));for(const v of values)el(id).add(new Option(id==='resolution'?v.replace('x',' × '):v.replaceAll('_',' '),v));if(current&&!values.includes(current))el(id).add(new Option(current.replaceAll('_',' '),current));el(id).value=current;}
 function datasetTitleBadges(dataset){
  const views=dataset.id.match(/(?:^|_)([1-9][0-9]*views)(?=_|$)/i)?.[1];
- const tags=[dataset.scene,dataset.resolution,views].filter(Boolean);
- const level=`<span class="badge ${escapeHtml(dataset.level.toLowerCase())}">${escapeHtml(dataset.level)}</span>`;
- return [level,...tags.map(tag=>`<span class="badge">${escapeHtml(tag)}</span>`)].join(' ');
+ const tags=[dataset.level,dataset.scene,dataset.resolution,views].filter(Boolean);
+ const levelClass=escapeHtml(dataset.level.toLowerCase());
+ return tags.map(tag=>`<span class="badge ${levelClass}">${escapeHtml(tag)}</span>`).join(' ');
 }
 function renderResult(result){
  lastResult=result;page=result.page;
