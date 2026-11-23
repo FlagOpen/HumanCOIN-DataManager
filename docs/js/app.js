@@ -1,7 +1,7 @@
 import {setupLanguage} from './i18n.js';
 import {LEVELS, initialLevels, manifest, command, formatBytes, duration} from './data.js';
 import {mediaUrl} from './card-previews.js';
-import {DEFAULT_LEVEL} from './config.js';
+import {DEFAULT_LEVEL, FULL_DATASET_REQUEST_ENDPOINT} from './config.js';
 import {WorkerClient, fetchManifest, createDetailLoader} from './catalog-client.js';
 const el=id=>document.getElementById(id);
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -65,7 +65,7 @@ function rememberScope(){if(!levels.length)return;try{localStorage.setItem(SCOPE
 function syncLevelChecks(){document.querySelectorAll('.levelfilter').forEach(i=>i.checked=levels.includes(i.value));}
 function changeScope(next){el('taskSearch').value='';levels=next;rememberScope();page=1;syncLevelChecks();for(const id of ['sceneCategory','scene','task','resolution'])el(id).value='';render({history:true});}
 function filterLevel(level){changeScope([level]);jump('explore');}
-function jump(id){if(id==='docs')return openDocs();if(id==='about')return openAbout();el(id)?.scrollIntoView({behavior:'smooth',block:'start'});document.querySelectorAll('.navitem').forEach(n=>n.classList.toggle('active',n.dataset.nav===id));el('crumb').textContent={home:'Overview',explore:'Explore Datasets',selection:'My Selection'}[id]||'Overview';}
+function jump(id){if(id==='docs')return openDocs();if(id==='about')return openAbout();if(id==='data-guide')return openModal('Data Guide','');el(id)?.scrollIntoView({behavior:'smooth',block:'start'});document.querySelectorAll('.navitem').forEach(n=>n.classList.toggle('active',n.dataset.nav===id));el('crumb').textContent={home:'Overview',explore:'Explore Datasets',selection:'My Selection'}[id]||'Overview';}
 function closeModal(){modalVersion++;el('modal').classList.remove('show');document.body.style.overflow='';lastFocus?.focus();}
 function openModal(title,body){modalVersion++;if(!el('modal').classList.contains('show'))lastFocus=document.activeElement;el('modalTitle').removeAttribute('data-content-language');el('modalTitle').textContent=title;el('modalBody').innerHTML=body;el('modal').classList.add('show');document.body.style.overflow='hidden';el('modal').querySelector('.close').focus();return modalVersion;}
 function hubLinks(d){return Object.entries(d.hubs).map(([key,h])=>`<a href="${escapeHtml(h.url)}" target="_blank" rel="noopener noreferrer">${key==='huggingface'?'Hugging Face':'ModelScope'} ↗</a>`).join(' · ');}
@@ -84,8 +84,51 @@ async function showPreview(entry){
  el('modalTitle').setAttribute('data-content-language','en');
 }
 function accessReminder(plain=false){return `<p class="${plain?'modaldesc':'notice'}">Before downloading, visit the <a href="https://huggingface.co/HumanCOIN" target="_blank" rel="noopener noreferrer">HumanCOIN Hugging Face page ↗</a>, open the datasets you need and request download access where required. For gated datasets, wait for approval and authenticate with the approved account before downloading.</p>`;}
+function openFullDatasetRequest(){
+ openModal('Request full dataset access', `
+ <form id="fullDatasetForm" class="access-form" method="post">
+   <label><span>Full name</span><input class="filterselect" name="name" autocomplete="name" maxlength="120" required></label>
+   <label><span>Email address</span><input class="filterselect" name="email" type="email" autocomplete="email" maxlength="254" required></label>
+   <label><span>Phone number (optional)</span><input class="filterselect" name="phone" type="tel" autocomplete="tel" maxlength="40"></label>
+   <label><span>Institution or organization</span><input class="filterselect" name="organization" autocomplete="organization" maxlength="200" required></label>
+   <label class="access-form-wide"><span>How will you use the dataset?</span><textarea class="filterselect" name="purpose" rows="4" maxlength="2000" required></textarea></label>
+   <p class="sectionhint access-form-wide">The HumanCOIN team will use this information to review your request and contact you.</p>
+   <button class="btn primary" type="submit">Submit request</button>
+   <p class="sectionhint access-form-wide" id="fullDatasetStatus" role="status" aria-live="polite"></p>
+ </form>`);
+ const form=el('fullDatasetForm');
+ const submit=form.querySelector('button[type="submit"]');
+ const status=el('fullDatasetStatus');
+ if(!FULL_DATASET_REQUEST_ENDPOINT){
+  submit.disabled=true;
+  status.textContent='Online applications are not available yet.';
+ }
+ form.onsubmit=async event=>{
+  event.preventDefault();
+  if(submit.disabled)return;
+  submit.disabled=true;
+  status.textContent='Submitting your request…';
+  const submittedModal=modalVersion;
+  try{
+   const response=await fetch(FULL_DATASET_REQUEST_ENDPOINT,{
+    method:'POST',headers:{Accept:'application/json'},body:new FormData(form),
+   });
+   if(!response.ok)throw new Error('Request failed');
+   form.reset();
+   status.textContent='Your request was received.';
+   setTimeout(()=>{
+    if(modalVersion!==submittedModal||!form.isConnected)return;
+    closeModal();
+    jump('home');
+   },1500);
+  }catch{
+   status.textContent='We could not submit your request. Please try again.';
+   submit.disabled=false;
+  }
+ };
+}
 function showWelcome(){
- openModal('Welcome to HumanCOIN', `<div class="welcome-content"><section class="welcome-release" aria-labelledby="welcomeRelease"><h3 id="welcomeRelease">Data availability</h3><p class="welcome-lead">The first batch is expected to include approximately <strong>1,200 hours</strong> of data.</p><p class="welcome-copy">For access to subsequent data, please email <a href="mailto:humancoin@163.com">humancoin@163.com</a> to apply.</p></section><section class="welcome-section" aria-labelledby="welcomePreview"><h3 id="welcomePreview">Video previews</h3><p class="welcome-copy">Please make sure you can access <a href="https://huggingface.co/HumanCOIN" target="_blank" rel="noopener noreferrer">Hugging Face ↗</a>. Full video previews currently load from Hugging Face.</p></section><section class="welcome-section" aria-labelledby="welcomeDownload"><h3 id="welcomeDownload">Before downloading</h3><p class="welcome-copy">Visit the <a href="https://huggingface.co/HumanCOIN" target="_blank" rel="noopener noreferrer">HumanCOIN Hugging Face page ↗</a> and open the datasets you need. If access is restricted, submit a request, wait for approval and authenticate with the approved account before downloading.</p></section><div class="welcome-actions"><button class="btn primary" id="dismissWelcome">Continue to portal</button></div></div>`);
+ openModal('Welcome to HumanCOIN', `<div class="welcome-content"><section class="welcome-release" aria-labelledby="welcomeRelease"><h3 id="welcomeRelease">Data availability</h3><p class="welcome-lead">The first batch is expected to include approximately <strong>1,200 hours</strong> of data.</p></section><section class="welcome-section" aria-labelledby="welcomePreview"><h3 id="welcomePreview">Video previews</h3><p class="welcome-copy">Please make sure you can access <a href="https://huggingface.co/HumanCOIN" target="_blank" rel="noopener noreferrer">Hugging Face ↗</a>. Full video previews currently load from Hugging Face.</p></section><section class="welcome-section" aria-labelledby="welcomeDownload"><h3 id="welcomeDownload">Before downloading</h3><p class="welcome-copy">Visit the <a href="https://huggingface.co/HumanCOIN" target="_blank" rel="noopener noreferrer">HumanCOIN Hugging Face page ↗</a> and open the datasets you need. If access is restricted, submit a request, wait for approval and authenticate with the approved account before downloading.</p></section><div class="welcome-actions"><button class="btn primary" id="dismissWelcome">Continue to portal</button></div></div>`);
  el('dismissWelcome').onclick=closeModal;
 }
 function huggingFaceLogin() {
@@ -93,11 +136,17 @@ function huggingFaceLogin() {
 unset HF_TOKEN
 hf auth whoami</pre><p class="modaldesc"><span>Run these commands in the terminal you will use to download. Confirm that the displayed username has access to the dataset.</span></p>`;
 }
+function modelScopeLogin() {
+  return `<div class="flabel">ModelScope authentication</div><p class="modaldesc"><span>For restricted datasets, request access on ModelScope. Once approved, create a token with the same account and run these commands in your Bash download terminal.</span> <a href="https://modelscope.cn/my/myaccesstoken" target="_blank" rel="noopener noreferrer">ModelScope access tokens ↗</a></p><pre class="cmd">read -rsp 'ModelScope Token: ' MODELSCOPE_TOKEN
+printf '\\n'
+export MODELSCOPE_TOKEN</pre>`;
+}
 function downloadBody(items, title) {
   let cmd, data;
   try { cmd=command(items,el('hub').value); data=manifest(items,el('hub').value,catalog.snapshotId); }
   catch(error) { toast(error.message); return; }
-  openModal(title, `${accessReminder()}<p class="modaldesc">${items.length} complete dataset(s) · ${el('hub').value}<br>Commands use the HumanCOIN download tool. JSON saves your selection for import into this portal.</p><div class="flabel">INSTALL (ONCE)</div><pre class="cmd">pip install -U "humancoin>=0.1.1"</pre>${el('hub').value==='huggingface'?huggingFaceLogin():''}<div class="flabel">DOWNLOAD COMMAND</div><pre class="cmd" id="downloadCode">${escapeHtml(cmd)}</pre><div class="downloadbar"><span class="sectionhint">Download to ./data/HumanCOIN/ with the selected revision for each repository.</span><button class="btn primary" id="copyCommand">⧉ Copy Command</button></div><details><summary>Selection JSON</summary><pre class="cmd">${escapeHtml(JSON.stringify(data,null,2))}</pre></details><p class="notice">Restricted repositories require platform access and authentication. Commit revisions pin content; main/master are mutable branches. Sizes come from metadata; HF downloads are platform statistics.</p>`);
+  openModal(title, `${el('hub').value==='huggingface'?accessReminder():''}<p class="modaldesc">${items.length} complete dataset(s) · ${el('hub').value}<br>Commands use the HumanCOIN download tool. JSON saves your selection for import into this portal.</p><div class="flabel">INSTALL (ONCE)</div><pre class="cmd">pip install -U "humancoin>=0.1.1"</pre>${el('hub').value==='huggingface'?huggingFaceLogin():modelScopeLogin()}<div class="flabel">DOWNLOAD COMMAND</div><pre class="cmd" id="downloadCode">${escapeHtml(cmd)}</pre><div class="downloadbar"><span class="sectionhint">Download to ./data/HumanCOIN/ with the selected revision for each repository.</span><button class="btn primary" id="copyCommand">⧉ Copy Command</button></div><details><summary>Selection JSON</summary><pre class="cmd">${escapeHtml(JSON.stringify(data,null,2))}</pre></details><p><button class="btn secondary" type="button" id="downloadFullDataset">Request full dataset access</button></p><p class="notice">Restricted repositories require platform access and authentication. Commit revisions pin content; main/master are mutable branches. Sizes come from metadata; HF downloads are platform statistics.</p>`);
+  el('downloadFullDataset').onclick=openFullDatasetRequest;
   el('copyCommand').onclick=()=>copyText(cmd);
 }
 async function copyText(text) {
@@ -112,12 +161,13 @@ function doExport() {
   } catch(error) { toast(error.message); }
 }
 function openDocs() {
-  openModal('HumanCOIN · Quick Start', `<p class="modaldesc">Filter datasets, choose a source, select complete repositories and generate download commands. Your selection is saved in this browser and can be imported or exported as JSON.</p><div class="flabel">INSTALL FROM PYPI</div><pre class="cmd">pip install -U "humancoin>=0.1.1"</pre>${huggingFaceLogin()}<p class="modaldesc">The download tool supports --hub, --datasets, --revision, --target-dir, --max-workers and --dry-run. Add --dry-run to check destination paths. Use Python 3.10–3.13. Authenticate with HF_TOKEN for Hugging Face, or MODELSCOPE_TOKEN / MS_TOKEN for ModelScope.</p><p><a href="https://github.com/FlagOpen/HumanCOIN" target="_blank" rel="noopener noreferrer">HumanCOIN Repository ↗</a></p><div class="notice">Unavailable statistics appear as —. Repositories with the same ID on both platforms share one catalog entry. Download commands are available only for platforms that host the selected repositories.</div>`);
+  openModal('HumanCOIN · Quick Start', `<p class="modaldesc">Filter datasets, choose a source, select complete repositories and generate download commands. Your selection is saved in this browser and can be imported or exported as JSON.</p><div class="flabel">INSTALL FROM PYPI</div><pre class="cmd">pip install -U "humancoin>=0.1.1"</pre>${huggingFaceLogin()}${modelScopeLogin()}<p class="modaldesc">The download tool supports --hub, --datasets, --revision, --target-dir, --max-workers and --dry-run. Add --dry-run to check destination paths. Use Python 3.10–3.13. Authenticate with HF_TOKEN for Hugging Face, or MODELSCOPE_TOKEN / MS_TOKEN for ModelScope.</p><p><a href="https://github.com/FlagOpen/HumanCOIN" target="_blank" rel="noopener noreferrer">HumanCOIN Repository ↗</a></p><div class="notice">Unavailable statistics appear as —. Repositories with the same ID on both platforms share one catalog entry. Download commands are available only for platforms that host the selected repositories.</div>`);
 }
 function openAbout() {
-  openModal('About HumanCOIN', `<p class="modaldesc">HumanCOIN is an egocentric multimodal dataset for embodied manipulation. It connects visible actions with the operator’s state through multi-view vision, gaze, surface EMG, EEG and glove kinematics under a unified spatiotemporal reference, supporting research into attention, execution and cognition.</p><p class="modaldesc">Three acquisition tiers share a task ontology. L1, visual intention, emphasizes everyday scene coverage. L2, motor intention, adds EMG and wrist views. L3, cognitive intention, adds EEG, measured gaze and detailed kinematic measurements. Deeper tiers focus on more controlled tasks with richer signal measurements.</p><p><a href="https://koorye.github.io/HumanCOIN-dev/" target="_blank" rel="noopener noreferrer">HumanCOIN project · Concept and acquisition architecture ↗</a></p><p class="modaldesc">This portal provides discovery, previews, filters and downloads for published datasets. Available modalities follow each repository’s metadata. Planned project scale is distinct from the published catalog statistics shown here.</p><p><a href="https://huggingface.co/HumanCOIN" target="_blank" rel="noopener noreferrer">Hugging Face ↗</a> · <a href="https://www.modelscope.cn/organization/HumanCOIN" target="_blank" rel="noopener noreferrer">ModelScope ↗</a></p>`);
+  openModal('About HumanCOIN', `<p class="modaldesc">HumanCOIN is an egocentric multimodal dataset for embodied manipulation. It connects visible actions with the operator’s state through multi-view vision, gaze, surface EMG, EEG and glove kinematics under a unified spatiotemporal reference, supporting research into attention, execution and cognition.</p><p class="modaldesc">Three acquisition tiers share a task ontology. L1, visual intention, emphasizes everyday scene coverage. L2, motor intention, adds EMG and wrist views. L3, cognitive intention, adds EEG, measured gaze and detailed kinematic measurements. Deeper tiers focus on more controlled tasks with richer signal measurements.</p><p><a href="https://flagopen.github.io/HumanCOIN/" target="_blank" rel="noopener noreferrer">HumanCOIN project · Concept and acquisition architecture ↗</a></p><p class="modaldesc">This portal provides discovery, previews, filters and downloads for published datasets. Available modalities follow each repository’s metadata. Planned project scale is distinct from the published catalog statistics shown here.</p><p><a href="https://huggingface.co/HumanCOIN" target="_blank" rel="noopener noreferrer">Hugging Face ↗</a> · <a href="https://www.modelscope.cn/organization/HumanCOIN" target="_blank" rel="noopener noreferrer">ModelScope ↗</a></p>`);
 }
 Object.assign(window,{jump,filterLevel,closeModal,openDocs,openAbout});
+el('requestFullDataset').onclick=openFullDatasetRequest;
 document.addEventListener('keydown',event=>{
  if(!el('modal').classList.contains('show'))return;if(event.key==='Escape')closeModal();
  if(event.key==='Tab'){const nodes=[...el('modal').querySelectorAll('button,a,input,select,textarea,summary,[tabindex="0"]')].filter(x=>!x.disabled);const first=nodes[0],last=nodes.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}}

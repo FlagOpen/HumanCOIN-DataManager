@@ -4,7 +4,7 @@
 
 HumanCOIN DataManager is a web portal for finding, previewing and downloading HumanCOIN datasets. Filter datasets, save your selection and copy ready-to-run download commands without assembling repository names by hand.
 
-The first batch is expected to include approximately **1,200 hours** of data. For access to subsequent data, contact [humancoin@163.com](mailto:humancoin@163.com). The portal catalog shows what is currently published.
+The first batch is expected to include approximately **1,200 hours** of data. To request access to the full dataset, use the application form on the live portal. The portal catalog shows what is currently published.
 
 ## Before downloading: request access
 
@@ -59,7 +59,6 @@ The catalog refreshes daily at **08:00 and 09:00 Asia/Shanghai** and can also be
 - Preview issues: check Hugging Face connectivity and permissions, or open the dataset on its source platform.
 - Portal bugs: [open an issue](https://github.com/FlagOpen/HumanCOIN-DataManager/issues).
 - Tool and dataset-reading questions: [HumanCOIN repository](https://github.com/FlagOpen/HumanCOIN).
-- Data requests and contact: [humancoin@163.com](mailto:humancoin@163.com).
 
 ## Local development
 

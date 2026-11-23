@@ -200,3 +200,24 @@ body{
 .welcome-section{margin-top:24px}
 .welcome-actions{display:flex;justify-content:flex-end;margin-top:30px}
 @media(max-width:640px){.welcome-content{padding:0}.welcome-lead{font-size:14px}.welcome-lead strong{font-size:inherit}.welcome-section{margin-top:20px}.welcome-actions .btn{width:100%}}
+
+.hero-meta{position:relative;z-index:1;display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 0 18px;font-size:12px}
+.hero-meta a,.level-link{color:#2865bf}
+.level-card .leveltop{width:100%;flex-wrap:wrap;gap:6px 12px}
+.level-card .leveldesc{min-height:0}
+.level-pathway{font-size:11px;font-weight:700;color:#607895}
+.level-link{margin-top:auto;font-size:12px;font-weight:700}
+
+@media (min-width:1100px){
+  .filters .filterheader strong{font-size:17px}
+  .filters .flabel,.filters .check,.filters .filterselect{font-size:14px}
+  .filters .check .count,.filters .mutelink,.filters #browseAll,.filters #taskHint{font-size:13px}
+}
+
+.access-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.access-form label{display:grid;gap:5px}
+.access-form textarea{resize:vertical}
+.access-form-wide{grid-column:1/-1}
+.access-form p{margin:0}
+.access-form .btn{justify-self:start}
+@media(max-width:640px){.access-form{grid-template-columns:1fr}}

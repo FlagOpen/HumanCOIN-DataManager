@@ -1,6 +1,56 @@
 // Translate portal UI only. Dataset content, metadata, IDs and commands stay verbatim.
 const translations = {
+ 'Data Guide':'数据说明',
+ 'Request full dataset access':'申请全量数据',
+ 'Full name':'姓名',
+ 'Email address':'邮箱',
+ 'Phone number (optional)':'手机号（选填）',
+ 'Institution or organization':'所属机构',
+ 'How will you use the dataset?':'请说明数据用途',
+ 'The HumanCOIN team will use this information to review your request and contact you.':'HumanCOIN 团队会使用这些信息审核申请并联系你。',
+ 'Submit request':'提交申请',
+ 'Online applications are not available yet.':'在线申请暂未开放。',
+ 'Submitting your request…':'正在提交申请…',
+ 'Your request was received.':'申请已提交。',
+ 'We could not submit your request. Please try again.':'申请提交失败，请重试。',
+ "HumanCOIN Data Portal | Egocentric Manipulation Dataset":"HumanCOIN 数据门户 | 第一视角人类操作数据集",
+ "HUMANCOIN · HUMAN INTENT":"HUMANCOIN · 人的意图与动作",
+ "HumanCOIN — intent before action":"HumanCOIN — 意图先于动作",
+ "HumanCOIN is building a 12,500-hour first-person manipulation corpus around the human intent pathway: gaze before the hand, muscle load before contact, and cortical activity before the motor command. Its three nested tiers capture proxies for attention (L1), exertion (L2), and cognition (L3) in a shared time and coordinate frame.":"人在伸手前会先看向目标，触碰前肌肉已开始发力，大脑也在为动作做准备。HumanCOIN 计划采集 12,500 小时的第一视角操作数据，从视觉注意、肌肉运动到认知活动，分三层记录这些信号。各层数据使用统一的时钟和坐标系，便于对齐分析。",
+ "CC BY-NC 4.0 data":"数据许可 CC BY-NC 4.0",
+ "Apache-2.0 code":"代码许可 Apache-2.0",
+ "Project homepage":"项目主页",
+ "Get the data":"获取数据",
+ "Read the quick start":"查看下载指南",
+ "L1 · Attention":"L1 · 视觉注意",
+ "L2 · Exertion":"L2 · 肌肉运动",
+ "L3 · Cognition":"L3 · 认知活动",
+ "Attention":"视觉注意",
+ "Exertion":"肌肉运动",
+ "Cognition":"认知活动",
+ "10,000 h planned":"计划 10,000 小时",
+ "2,000 h planned":"计划 2,000 小时",
+ "500 h planned":"计划 500 小时",
+ "INTENT PATHWAY · OUTPUT END":"意图如何显现 · 视线指向",
+ "INTENT PATHWAY · MIDWAY":"意图如何执行 · 肌肉运动",
+ "INTENT PATHWAY · ORIGIN":"意图如何形成 · 大脑活动",
+ "Gaze reaches the target before the hand.":"手还没到，目光已落在目标上。",
+ "Muscle load builds before contact.":"碰到物体之前，肌肉就开始发力。",
+ "Cortical activity precedes the motor command.":"运动指令发出前，皮层活动已出现。",
+ "Four headband cameras capture first-person video. Gaze inferred from these views shows where attention shifts before the hand arrives.":"头环上的四台相机记录第一视角视频。通过视频估计注视方向，可以看出手伸向物体之前，操作者在看哪里。",
+ "L2 inherits L1 and adds two forearm sEMG armbands (8+8 channels) to capture the effort a task demands as it unfolds.":"在 L1 的基础上，用两个臂环采集左右前臂的表面肌电（各 8 通道），观察操作过程中何时发力、发力如何变化。",
+ "L3 inherits L1 and L2 and adds scalp EEG. In the controlled subset, an eye tracker, motion-capture gloves and 6-DoF trackers directly measure gaze, hand pose and finger kinematics.":"在 L1 和 L2 的基础上增加头皮脑电。部分任务在受控环境中采集，并用眼动仪、动捕手套和六自由度追踪器直接测量视线、手部位姿和手指运动。",
+ "38/38 scene classes · inferred gaze · RGB · depth/point cloud · 6-DoF head/wrist pose":"覆盖全部 38 类场景 · 估计注视 · RGB · 深度与点云 · 头部和手腕的六自由度位姿",
+ "21/38 scene classes · adds sEMG (8+8 channels)":"覆盖 21 类场景 · 新增双侧表面肌电（各 8 通道）",
+ "9/38 scene classes (controlled) · adds EEG and measured gaze/hand pose":"受控采集覆盖 9 类场景 · 新增脑电、实测注视与手部位姿",
+ "Browse L1 episodes →":"浏览 L1 数据 →",
+ "Browse L2 episodes →":"浏览 L2 数据 →",
+ "Browse L3 episodes →":"浏览 L3 数据 →",
+
  'Hugging Face login':'登录 Hugging Face',
+ 'ModelScope authentication':'魔搭认证',
+ 'For restricted datasets, request access on ModelScope. Once approved, create a token with the same account and run these commands in your Bash download terminal.':'下载受限数据集前，请先在魔搭申请访问权限。获批后，用同一账号创建令牌，并在用于下载的 Bash 终端中运行以下命令。',
+ 'ModelScope access tokens ↗':'魔搭访问令牌 ↗',
  'Run these commands in the terminal you will use to download. Confirm that the displayed username has access to the dataset.':'请在用于下载的终端中运行这些命令，确认显示的账号已获得该数据集的访问权限。',
  'Data availability':'数据开放',
  'The first batch is expected to include approximately':'首批预计开放约',
@@ -47,6 +97,7 @@ export function translate(text){
  return text;
 }
 export function setupLanguage(){
+ const pageTitle=document.title;
  let language;try{language=localStorage.getItem('humancoin.language');}catch{}
  language=new URL(location.href).searchParams.get('lang')||language||'en';language=language==='zh'?'zh':'en';
  const originals=new WeakMap(),attributes=new WeakMap();
@@ -70,7 +121,7 @@ export function setupLanguage(){
    }attributes.set(element,cache);
   });
   const buttonLabel=language==='zh'?'English':'中文';if(button.textContent!==buttonLabel)button.textContent=buttonLabel;button.setAttribute('aria-label',language==='zh'?'Switch to English':'切换到中文');
-  document.title=language==='zh'?translations['HumanCOIN DataManager — Multimodal Human Data Portal']:'HumanCOIN DataManager — Multimodal Human Data Portal';
+  document.title=language==='zh'?translate(pageTitle):pageTitle;
  }
  const button=document.createElement('button');button.id='languageSwitch';button.className='btn small secondary';button.type='button';document.querySelector('.topright').prepend(button);
  button.onclick=()=>{language=language==='zh'?'en':'zh';try{localStorage.setItem('humancoin.language',language);}catch{}const url=new URL(location.href);url.searchParams.set('lang',language);history.replaceState(null,'',url);apply();};

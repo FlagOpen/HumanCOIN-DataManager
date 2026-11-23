@@ -4,7 +4,7 @@
 
 HumanCOIN DataManager 是查找、预览和下载 HumanCOIN 数据集的网页工具。你可以筛选数据、保存选择，并直接复制下载命令，无需手动拼接数据集名称。
 
-首批预计开放约 **1,200 小时**数据。后续数据欢迎通过邮件联系申请使用：[humancoin@163.com](mailto:humancoin@163.com)。实际已发布的数据以门户目录为准。
+首批预计开放约 **1,200 小时**数据。如需全量数据，请在在线门户提交申请。实际已发布的数据以门户目录为准。
 
 ## 下载前：申请访问权限
 
@@ -59,7 +59,6 @@ JSON 是选择清单，不包含数据本身，也不会上传本地数据。浏
 - 预览失败：检查 Hugging Face 连接与访问权限，也可前往数据来源平台查看。
 - 网页问题：[提交 Issue](https://github.com/FlagOpen/HumanCOIN-DataManager/issues)。
 - 工具与数据读取问题：[HumanCOIN 仓库](https://github.com/FlagOpen/HumanCOIN)。
-- 数据申请与其他联系：[humancoin@163.com](mailto:humancoin@163.com)。
 
 ## 本地运行与开发
 
