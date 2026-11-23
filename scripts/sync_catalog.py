@@ -27,6 +27,7 @@ except ImportError:
 HF = 'https://huggingface.co'
 MS = 'https://www.modelscope.cn'
 METADATA_FORMAT = 'portal.yaml+sensor-streams'
+L3_METADATA_FORMAT = 'portal.yaml+sensor-streams+total-episodes'
 ROOT = Path(__file__).resolve().parents[1]
 _NETWORK_LOCK = threading.Lock()
 _THROTTLE_UNTIL = 0.0
@@ -174,7 +175,8 @@ def normalize(repo, hf, ms, metadata):
         'level': level, 'scene': scene, 'sceneCategory': scene_category,
         'task': metadata.get('task_name') or '', 'description': metadata.get('example_task_description') or '',
         'mods': metadata.get('modalities') or [], 'resolution': resolution, 'primaryCamera': primary,
-        'resolutionSource': resolution_source, 'episodes': metadata.get('num_recordings'),
+        'resolutionSource': resolution_source,
+        'episodes': metadata.get('total_episodes' if level == 'L3' else 'num_recordings'),
         'durationSeconds': metadata.get('duration_s'), 'sizeBytes': metadata.get('size_bytes'),
         'downloads': hf.get('downloads'),
         'updated': hf.get('lastModified') or (datetime.fromtimestamp(ms['GmtModified'], timezone.utc).isoformat() if ms.get('GmtModified') else ''),
@@ -228,7 +230,7 @@ def validate_portal(metadata, repo):
         value = metadata.get(field)
         if value is not None and not isinstance(value, str):
             raise ValueError(f'Invalid {field}')
-    for field in ('num_recordings', 'duration_s', 'size_bytes'):
+    for field in ('num_recordings', 'total_episodes', 'duration_s', 'size_bytes'):
         value = metadata.get(field)
         if value is not None and not valid_number(value, integer=field != 'duration_s'):
             raise ValueError(f'Invalid {field}')
@@ -273,15 +275,16 @@ def source_record(repo, hub, listing, cache_root, now, warnings, force=False):
         cached = json.loads(cache_path.read_text()) if cache_path.exists() else None
         if cached and not all(key in cached for key in ('fingerprint', 'checkedAt', 'record')):
             cached = None
-        if cached and cached.get('metadataFormat') not in ('portal.yaml', 'portal.yaml+recording-info', METADATA_FORMAT):
+        if cached and cached.get('metadataFormat') not in ('portal.yaml', 'portal.yaml+recording-info', METADATA_FORMAT, L3_METADATA_FORMAT):
             cached = None
     except (ValueError, OSError):
         cached = None
     fingerprint = listing.get('sha') if hub == 'huggingface' else str(listing.get('GmtModified') or '')
-    if cached and cached['metadataFormat'] == METADATA_FORMAT and not force and cached['fingerprint'] == fingerprint:
+    cache_format = L3_METADATA_FORMAT if cached and cached['record'].get('level') == 'L3' else METADATA_FORMAT
+    if cached and cached['metadataFormat'] == cache_format and not force and cached['fingerprint'] == fingerprint:
         # Commit-addressed HF data can be reused indefinitely. Branch-based sources are rechecked daily.
         age = (now - datetime.fromisoformat(cached['checkedAt'])).total_seconds()
-        if (hub == 'huggingface' and fingerprint and not cached.get('streamReadFailed')) or age < 86400:
+        if (hub == 'huggingface' and fingerprint and not cached.get('streamReadFailed') and not cached.get('episodeReadFailed')) or age < 86400:
             return cached['record'], 'ok', cached['checkedAt']
     revision = (listing.get('sha') or 'main') if hub == 'huggingface' else 'master'
     try:
@@ -289,12 +292,31 @@ def source_record(repo, hub, listing, cache_root, now, warnings, force=False):
     except (HTTPError, URLError, TimeoutError, ValueError, yaml.YAMLError) as exc:
         warnings.append(f'{hub}/{repo}/portal.yaml: {exc}')
         if cached:
-            return cached['record'], 'stale', cached['checkedAt']
+            record = cached['record']
+            if record.get('level') == 'L3' and cached['metadataFormat'] != L3_METADATA_FORMAT:
+                record = {**record, 'episodes': None}
+            return record, 'stale', cached['checkedAt']
         metadata = None
     record = normalize(repo, listing if hub == 'huggingface' else {}, listing if hub == 'modelscope' else {}, metadata or {})
     record['metadataFingerprint'] = fingerprint
     record['metadataRevision'] = revision
     if metadata is not None:
+        episode_read_failed = False
+        if record['level'] == 'L3' and record['episodes'] is None:
+            path = 'meta/info.json'
+            url = f'{HF}/datasets/{repo}/raw/{revision}/{path}' if hub == 'huggingface' else ms_file(repo, path)
+            try:
+                info = fetch(url)[0]
+                total = info.get('total_episodes') if isinstance(info, dict) else None
+                if not valid_number(total, integer=True):
+                    raise ValueError('Invalid or missing total_episodes')
+                record['episodes'] = total
+                record['metadataSources'].append(url)
+            except (URLError, TimeoutError, ValueError) as exc:
+                episode_read_failed = True
+                warnings.append(f'{hub}/{repo}/meta/info.json: {exc}')
+                if cached and cached['metadataFormat'] == L3_METADATA_FORMAT and cached['fingerprint'] == fingerprint:
+                    record['episodes'] = cached['record'].get('episodes')
         example = metadata.get('example_recording')
         stream_read_failed = False
         if 'sensor_streams' not in metadata and isinstance(example, str) and re.fullmatch(r'[a-zA-Z0-9_-][a-zA-Z0-9_. -]*', example):
@@ -310,8 +332,10 @@ def source_record(repo, hub, listing, cache_root, now, warnings, force=False):
                     record['streams'] = cached['record'].get('streams', [])
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         temp = cache_path.with_suffix('.tmp')
-        temp.write_bytes(encoded({'metadataFormat': METADATA_FORMAT, 'fingerprint': fingerprint,
+        metadata_format = L3_METADATA_FORMAT if record['level'] == 'L3' else METADATA_FORMAT
+        temp.write_bytes(encoded({'metadataFormat': metadata_format, 'fingerprint': fingerprint,
                                   'checkedAt': now.isoformat(), 'streamReadFailed': stream_read_failed,
+                                  'episodeReadFailed': episode_read_failed,
                                   'record': record}))
         temp.replace(cache_path)
     return record, 'missing' if metadata is None else 'ok', now.isoformat()

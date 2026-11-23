@@ -13,6 +13,7 @@ NOW = datetime(2026,11,13,tzinfo=timezone.utc)
 HF_ROW={'id':'HumanCOIN/l3_demo','author':'HumanCOIN','sha':'a'*40,'downloads':4,'tags':['L3'],'lastModified':'2026-11-12T00:00:00Z'}
 PORTAL = {'schema_version': 1, 'scene': {'name': 'kitchen'}, 'task_name': 'cook',
           'example_task_description': 'Example recording', 'num_recordings': 2,
+          'total_episodes': 2,
           'duration_s': 10, 'size_bytes': 1024, 'modalities': ['RGB', 'EEG'],
           'resolution': '1920x1184', 'primary_camera': 'observation.images.head',
           'preview_video': 'first recording/videos/head.mp4'}
@@ -63,6 +64,19 @@ class CatalogTest(unittest.TestCase):
         ms = sync.normalize(repo, {}, {'Name': 'l1_demo'}, metadata)
         self.assertEqual(ms['videos'][0]['url'], sync.ms_file(repo, PORTAL['preview_video']))
         self.assertEqual(ms['metadataSources'], [sync.ms_file(repo, 'portal.yaml')])
+
+    def test_l3_uses_total_episodes_from_repository_info(self):
+        metadata = {**PORTAL, 'num_recordings': 1}
+        del metadata['total_episodes']
+        self.assertIsNone(sync.normalize(HF_ROW['id'], HF_ROW, {}, metadata)['episodes'])
+        self.assertEqual(sync.normalize(HF_ROW['id'], HF_ROW, {}, {**metadata, 'total_episodes': 0})['episodes'], 0)
+        with tempfile.TemporaryDirectory() as tmp, patch.object(
+            sync, 'fetch', side_effect=[(metadata, ''), ({'total_episodes': 7}, '')]
+        ) as fetch:
+            row, status, _ = sync.source_record(HF_ROW['id'], 'huggingface', HF_ROW, Path(tmp), NOW, [])
+            self.assertEqual(status, 'ok')
+            self.assertEqual(row['episodes'], 7)
+            self.assertTrue(fetch.call_args.args[0].endswith('/meta/info.json'))
 
     def test_missing_portal_uses_listing_only(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -63,7 +63,8 @@ The catalog reads `portal.yaml` at the root of each dataset repository on Huggin
 
 - `repo_id`, `level`, `license`, `scene` (`area` or `name`, plus `category`), and `task_name`
 - `example_task_description` for the card summary
-- `num_recordings`, `duration_s` in seconds, and `size_bytes` for repository-level totals
+- `num_recordings` for L1/L2 episode counts. L3 uses `total_episodes` from `portal.yaml` or the repository's `meta/info.json`.
+- `duration_s` in seconds and `size_bytes` for repository-level totals
 - `resolution` as `WIDTHxHEIGHT`, `modalities` as a list, and `primary_camera` as the stream identifier
 - `sensor_streams` for the repository-level stream definitions. Use `feature_key`, `shape`, optional `sample_rate_hz` and optional `dtype`. These names follow the recording README stream definitions. Add camera streams using their feature keys and frame shapes. Per-recording sample counts belong in the recording README.
 - `example_recording` can provide a fallback through its `meta/info.json` for older YAML files that omit `sensor_streams`.
