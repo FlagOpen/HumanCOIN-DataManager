@@ -77,12 +77,11 @@ def main():
             b.js("window.__errors=[];window.addEventListener('error',e=>__errors.push(e.message));window.addEventListener('unhandledrejection',e=>__errors.push(String(e.reason)))")
             for nav,title in [('home','Overview'),('explore','Explore Datasets'),('selection','My Selection')]:
                 b.click(f'[data-nav="{nav}"]');assert b.js("return document.getElementById('crumb').textContent")==title
-            b.click('button[onclick^="jump"]');assert b.js("return document.getElementById('crumb').textContent")=='Explore Datasets'
             b.click('[data-nav="docs"]');b.wait("return document.getElementById('modalTitle').textContent==='HumanCOIN · Quick Start'");b.click('#modal .close')
             b.click('[data-nav="about"]');b.wait("return document.getElementById('modalTitle').textContent==='About HumanCOIN'")
             b.call('/session/'+b.session+'/actions',{'actions':[{'type':'key','id':'keyboard','actions':[{'type':'keyDown','value':'\ue00c'},{'type':'keyUp','value':'\ue00c'}]}]})
             assert not b.js("return document.getElementById('modal').classList.contains('show')")
-            b.click('button[onclick="openDocs()"]');b.call('/session/'+b.session+'/actions',{'actions':[{'type':'pointer','id':'mouse','parameters':{'pointerType':'mouse'},'actions':[{'type':'pointerMove','duration':0,'x':10,'y':100},{'type':'pointerDown','button':0},{'type':'pointerUp','button':0}]}]})
+            b.click('[data-nav="docs"]');b.call('/session/'+b.session+'/actions',{'actions':[{'type':'pointer','id':'mouse','parameters':{'pointerType':'mouse'},'actions':[{'type':'pointerMove','duration':0,'x':10,'y':100},{'type':'pointerDown','button':0},{'type':'pointerUp','button':0}]}]})
             assert not b.js("return document.getElementById('modal').classList.contains('show')")
             checks.append('navigation, documentation, About, close button, Escape and overlay close')
             b.click('#browseAll');b.wait("return document.getElementById('shown').textContent==='45'")

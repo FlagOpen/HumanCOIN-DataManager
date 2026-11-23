@@ -20,6 +20,12 @@ const translations = {
  "CC BY-NC 4.0 data":"数据许可 CC BY-NC 4.0",
  "Apache-2.0 code":"代码许可 Apache-2.0",
  "Project homepage":"项目主页",
+ "HumanCOIN project links":"HumanCOIN 项目链接",
+ "Technical report":"技术报告",
+ "Data download portal":"数据下载门户",
+ "User documentation":"用户使用文档",
+ "ModelScope Community":"ModelScope（魔搭社区）",
+ "Contact":"联系我们",
  "Get the data":"获取数据",
  "Read the quick start":"查看下载指南",
  "L1 · Attention":"L1 · 视觉注意",
@@ -123,7 +129,7 @@ export function setupLanguage(){
   const buttonLabel=language==='zh'?'English':'中文';if(button.textContent!==buttonLabel)button.textContent=buttonLabel;button.setAttribute('aria-label',language==='zh'?'Switch to English':'切换到中文');
   document.title=language==='zh'?translate(pageTitle):pageTitle;
  }
- const button=document.createElement('button');button.id='languageSwitch';button.className='btn small secondary';button.type='button';document.querySelector('.topright').prepend(button);
+ const button=document.getElementById('languageSwitch');
  button.onclick=()=>{language=language==='zh'?'en':'zh';try{localStorage.setItem('humancoin.language',language);}catch{}const url=new URL(location.href);url.searchParams.set('lang',language);history.replaceState(null,'',url);apply();};
  apply();let pending=false;new MutationObserver(()=>{if(!pending){pending=true;queueMicrotask(()=>{pending=false;observerRun();});}}).observe(document.body,{childList:true,subtree:true,characterData:true});
  function observerRun(){apply();}

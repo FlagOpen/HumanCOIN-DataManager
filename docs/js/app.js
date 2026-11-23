@@ -4,6 +4,7 @@ import {mediaUrl} from './card-previews.js';
 import {DEFAULT_LEVEL, FULL_DATASET_REQUEST_ENDPOINT} from './config.js';
 import {WorkerClient, fetchManifest, createDetailLoader} from './catalog-client.js';
 const el=id=>document.getElementById(id);
+setupLanguage();
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const count=value=>value==null?'—':value.toLocaleString('en-US');
 const STORAGE='humancoin.selection.v1',SCOPE_STORAGE='humancoin.scope.v1',MODS=['RGB','Depth','Hand Pose','Gaze','Eye Camera','EMG','EEG','Manus','Audio','IMU'];
@@ -167,7 +168,7 @@ function openAbout() {
   openModal('About HumanCOIN', `<p class="modaldesc">HumanCOIN is an egocentric multimodal dataset for embodied manipulation. It connects visible actions with the operator’s state through multi-view vision, gaze, surface EMG, EEG and glove kinematics under a unified spatiotemporal reference, supporting research into attention, execution and cognition.</p><p class="modaldesc">Three acquisition tiers share a task ontology. L1, visual intention, emphasizes everyday scene coverage. L2, motor intention, adds EMG and wrist views. L3, cognitive intention, adds EEG, measured gaze and detailed kinematic measurements. Deeper tiers focus on more controlled tasks with richer signal measurements.</p><p><a href="https://flagopen.github.io/HumanCOIN/" target="_blank" rel="noopener noreferrer">HumanCOIN project · Concept and acquisition architecture ↗</a></p><p class="modaldesc">This portal provides discovery, previews, filters and downloads for published datasets. Available modalities follow each repository’s metadata. Planned project scale is distinct from the published catalog statistics shown here.</p><p><a href="https://huggingface.co/HumanCOIN" target="_blank" rel="noopener noreferrer">Hugging Face ↗</a> · <a href="https://www.modelscope.cn/organization/HumanCOIN" target="_blank" rel="noopener noreferrer">ModelScope ↗</a></p>`);
 }
 Object.assign(window,{jump,filterLevel,closeModal,openDocs,openAbout});
-el('requestFullDataset').onclick=openFullDatasetRequest;
+el('projectFullDataset').onclick=openFullDatasetRequest;
 document.addEventListener('keydown',event=>{
  if(!el('modal').classList.contains('show'))return;if(event.key==='Escape')closeModal();
  if(event.key==='Tab'){const nodes=[...el('modal').querySelectorAll('button,a,input,select,textarea,summary,[tabindex="0"]')].filter(x=>!x.disabled);const first=nodes[0],last=nodes.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}}
@@ -251,5 +252,3 @@ let taskSearchTimer;el('taskSearch').oninput=()=>{clearTimeout(taskSearchTimer);
 el('sceneCategory').onchange=()=>{el('scene').value='';el('task').value='';el('taskSearch').value='';page=1;render({history:true});};
 
 el('scene').onchange=()=>{el('task').value='';el('taskSearch').value='';page=1;render({history:true});};
-
-setupLanguage();
