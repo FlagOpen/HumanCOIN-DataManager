@@ -10,8 +10,11 @@ concurrency:
   cancel-in-progress: false
 jobs:
   refresh:
+    permissions:
+      contents: write
+      pages: read
     outputs:
-      source_sha: ${{ steps.source.outputs.sha }}
+      artifact_name: ${{ steps.pages_artifact.outputs.name }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,13 +42,14 @@ jobs:
             git commit -m 'chore: refresh HumanCOIN catalog'
             git push
           fi
-      - name: Record deployed source revision
-        id: source
-        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/configure-pages@v5
+      - name: Name Pages artifact
+        id: pages_artifact
+        run: echo "name=github-pages-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-pages-artifact@v4
         with:
-          name: refreshed-catalog
-          path: docs/data
+          name: ${{ steps.pages_artifact.outputs.name }}
+          path: docs
   deploy:
     needs: refresh
     permissions:
@@ -60,16 +64,7 @@ jobs:
       group: pages
       cancel-in-progress: true
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.refresh.outputs.source_sha }}
-      - uses: actions/download-artifact@v4
-        with:
-          name: refreshed-catalog
-          path: docs/data
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v4
-        with:
-          path: docs
       - uses: actions/deploy-pages@v5
         id: deployment
+        with:
+          artifact_name: ${{ needs.refresh.outputs.artifact_name }}
