@@ -226,3 +226,7 @@ body{
 .project-links{display:flex;flex-wrap:wrap;gap:8px 18px;margin:0 0 14px;font-size:13px}
 .project-links a,.project-links button{color:#2865bf;text-underline-offset:3px}
 .project-links button{padding:0;border:0;background:none;font:inherit;text-decoration:underline;cursor:pointer}
+
+.footer-wechat{display:flex;align-items:center;gap:16px;width:100%;margin-top:8px;color:#425b7b;font-size:13px}
+.footer-wechat p{margin:4px 0 0}
+.footer-wechat img{display:block;background:#fff}

@@ -1,5 +1,8 @@
 // Translate portal UI only. Dataset content, metadata, IDs and commands stay verbatim.
 const translations = {
+ 'Contact us on WeChat':'欢迎通过微信联系我们',
+ 'Scan the QR code or click it to enlarge.':'微信扫码，或点击查看大图。',
+ 'HumanCOIN WeChat QR code':'HumanCOIN 微信二维码',
  'Data Guide':'数据说明',
  'Request full dataset access':'申请全量数据',
  'Full name':'姓名',
@@ -118,10 +121,10 @@ export function setupLanguage(){
    const value=language==='zh'?original.replace(/\S[\s\S]*\S|\S/,s=>translate(s)):original;
    originals.set(node,{original,output:value});if(node.nodeValue!==value)node.nodeValue=value;
   }
-  document.querySelectorAll('[placeholder],[title],[aria-label]').forEach(element=>{
+  document.querySelectorAll('[placeholder],[title],[aria-label],.footer-wechat img[alt]').forEach(element=>{
    if(element.closest(protectedSelector)||element.closest('.dataset'))return;
    const cache=attributes.get(element)||{};
-   for(const name of ['placeholder','title','aria-label'])if(element.hasAttribute(name)){
+   for(const name of ['placeholder','title','aria-label','alt'])if(element.hasAttribute(name)){
     const value=element.getAttribute(name),prior=cache[name],original=prior&&value===prior.output?prior.original:value,output=language==='zh'?translate(original):original;
     cache[name]={original,output};if(value!==output)element.setAttribute(name,output);
    }attributes.set(element,cache);
